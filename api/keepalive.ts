@@ -1,4 +1,5 @@
 // Vercel cron: one cheap RPC call a day keeps the free-tier corpus warm.
+declare const process: { env: Record<string, string | undefined> };
 export default async function handler(_req: Request) {
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.VITE_SUPABASE_ANON_KEY;

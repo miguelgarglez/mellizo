@@ -11,7 +11,8 @@ const haptics = new WebHaptics();
 
 const STATUS = {
   reading: "Reading your photograph…",
-  warming: "Warming the eyes — a one-time download",
+  warming: "Warming the eyes · a one-time download",
+  preparing: "Preparing the model…",
   embedding: "Studying its features…",
   searching: "Walking the galleries…",
 };
@@ -110,6 +111,8 @@ export default function App() {
       setRunners(matches.slice(1));
       setLimited(limited);
       setPhase("result");
+      // warm the near-miss thumbs so the strip opens with paint, not black
+      matches.slice(1, 5).forEach(m => { const t = new Image(); t.src = m.img; });
       // the mark stamps late in the reveal — confirm exactly when it lands
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
       setTimeout(() => haptics.trigger("success"), reduced ? 0 : 1400);
@@ -179,20 +182,18 @@ export default function App() {
   const pwEff = ph < ph0 ? ph * (photo ? photo.w / photo.h : 4 / 3) : pw;
   const aw = mobile ? 162 : 268;
   const ah0 = aw * matchAr;
-  const ah = Math.min(ah0, mobile ? 260 : 340);
+  const ah = Math.min(ah0, mobile ? 220 : 340);
   const awEff = ah < ah0 ? ah / matchAr : aw;
-  const seamY = mobile ? 196 : 330;
+  const seamY = mobile ? 160 : 330;
   const pTop = seamY - ph / 2 - 5;
   const aTop = seamY - ah / 2 - 5;
   const px = mobile ? 12 : 355;
   const ax = mobile ? 200 : 720;
   const pairCx = (px + ax + awEff) / 2;
-  const capTop = Math.max(pTop + ph, aTop + ah) + (mobile ? 34 : 52);
+  const capTop = Math.max(pTop + ph, aTop + ah) + (mobile ? 30 : 52);
   const capLeft = mobile
     ? Math.min(Math.max(pairCx - 150, 10), 375 - 310)
     : pairCx - 185;
-  const verdictWord = (s: number) =>
-    s >= 85 ? "uncanny" : s >= 70 ? "striking" : s >= 55 ? "a family resemblance" : "a distant cousin";
 
   // ----- frame positions: entry hang ↔ result rehang -----
   // Frames keep their entry left/top as the base position; the rehang moves
@@ -301,8 +302,8 @@ export default function App() {
               {mobile && <div className="cap-brand">mellizo · a museum of resemblances</div>}
               <div className="title">{match.title}</div>
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
-              <div className="verdict">resemblance <b>{match.score}</b> · {verdictWord(match.score)}</div>
-              {limited && <div className="limited">pocket collection · the wall hung itself, 21 works</div>}
+              <div className="verdict">resemblance <b>{match.score}</b> · its nearest neighbor</div>
+              {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}
               <div className="actions">
                 <button onClick={reset}>hang another</button>
                 {runners.length > 0 && (
@@ -315,7 +316,9 @@ export default function App() {
                 <div className="strip">
                   {runners.slice(0, mobile ? 3 : 4).map(r => (
                     <button key={r.id} className="mini" onClick={() => swapRunner(r)} aria-label={`Hang ${r.title} instead`}>
-                      <img src={r.img} alt={r.title} />
+                      <img src={r.img} alt={r.title}
+                        ref={el => { if (el?.complete && el.naturalWidth) el.classList.add("ld"); }}
+                        onLoad={e => e.currentTarget.classList.add("ld")} />
                       <span>{r.score}</span>
                     </button>
                   ))}
@@ -335,13 +338,20 @@ export default function App() {
           </h1>
           <p className={`sub${phase === "busy" ? " status" : ""}`} aria-live="polite" style={mobile ? { fontSize: 12.5, maxWidth: 300, marginTop: 10 } : undefined}>
             {phase === "busy"
-              ? `${status}${modelPct > 0 && modelPct < 1 ? ` ${Math.round(modelPct * 100)}%` : ""}`
+              ? status === STATUS.warming && modelPct >= 1
+                ? STATUS.preparing
+                : `${status}${modelPct > 0 && modelPct < 1 ? ` ${Math.round(modelPct * 100)}%` : ""}`
               : phase === "error"
                 ? status
                 : mobile
                   ? "The collection finds its match on this device. Your photo is never uploaded."
-                  : "Drop any photo onto the wall. Eighteen thousand open artworks answer, and the photo itself never leaves your device."}
+                  : "Drop any photo onto the wall. Open artworks answer, and the photo itself never leaves your device."}
           </p>
+          {phase === "busy" && (
+            <div className="busybar">
+              <div className={modelPct > 0 && modelPct < 1 ? "fill" : "fill ind"} style={modelPct > 0 && modelPct < 1 ? { width: `${Math.round(modelPct * 100)}%` } : undefined} />
+            </div>
+          )}
           {phase === "error" ? (
             <p className={`act${mobile ? " tap" : ""}`}><button className="retry" onClick={openPicker}>try again</button></p>
           ) : phase === "idle" && !mobile ? (
@@ -352,7 +362,7 @@ export default function App() {
         {/* on mobile the sample link hangs under the reserved frame's label */}
         {mobile && phase === "idle" && (
           <button className="retry sample-under" style={{ left: resBase.x + resBase.w / 2, top: resBase.y + resBase.h + 56 }}
-            onClick={useSample}>or hang one of ours</button>
+            onClick={useSample}><img className="sample-thumb" src="/sample.jpg" alt="" />or hang one of ours</button>
         )}
 
         {!mobile && (

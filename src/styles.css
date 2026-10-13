@@ -46,8 +46,12 @@ body {
     opacity .7s ease;
 }
 .frame.gone { opacity: 0; pointer-events: none; }
-/* in the result the pair owns the room; the rest of the hang steps back */
-.phase-result .frame:not(.reserved):not(.twin):not(.gone) { opacity: .55; }
+/* in the result the pair owns the room; the rest of the hang steps back —
+   paintings dim, frames keep their material so the wall stays physical */
+.phase-result .frame:not(.reserved):not(.twin):not(.gone) { opacity: .78; }
+.phase-result .frame:not(.reserved):not(.twin):not(.gone) img {
+  filter: saturate(.45) brightness(1.1); opacity: .72;
+}
 .frame .moulding {
   background: var(--frame); padding: 5px; height: 100%;
   box-shadow: 1px 2px 4px rgba(24,20,14,.15), 3px 8px 16px -8px rgba(24,20,14,.22);
@@ -59,7 +63,7 @@ body {
   transition: padding .8s ease;
 }
 .frame .mat.deep { padding: 13%; }
-.frame img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.93) contrast(1.01); }
+.frame img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.93) contrast(1.01); transition: filter .7s ease, opacity .7s ease; }
 .reserved .mat img { object-fit: contain; }
 .frame .accn {
   position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
@@ -115,7 +119,15 @@ button.frame:disabled { cursor: default; }
 .vinyl h1 { font-family: "Fraunces", serif; font-weight: 400; font-size: 44px; line-height: 1.04; letter-spacing: -0.015em; color: var(--ink); }
 .vinyl h1 em { font-style: italic; font-weight: 300; }
 .vinyl .sub { margin-top: 16px; font-size: 14px; line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
-.vinyl .sub.status { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .06em; }
+.vinyl .sub.status { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .06em; color: var(--ink); }
+/* the wait always has a heartbeat: real progress during download,
+   an indeterminate pulse while the model thinks and galleries answer */
+.busybar { margin-top: 14px; width: 200px; height: 2px; background: var(--hairline); overflow: hidden; }
+.busybar .fill { height: 100%; background: var(--red); transition: width .3s ease; }
+.busybar .fill.ind {
+  width: 34%; animation: ind 1.15s var(--ease-wall) infinite alternate;
+}
+@keyframes ind { from { transform: translateX(-30%); } to { transform: translateX(230%); } }
 .vinyl .act { margin-top: 20px; font-size: 13.5px; color: var(--ink); }
 .vinyl .act .retry {
   appearance: none; background: none; border: 0; padding: 0 0 2px;
@@ -125,7 +137,7 @@ button.frame:disabled { cursor: default; }
 .vinyl .act.tap .retry { display: inline-block; padding: 15px 8px 15px 0; margin: -4px 0; }
 @media (hover: hover) { .vinyl .act .retry:hover { border-bottom-color: var(--red); color: var(--red); } }
 .vinyl .act .retry:active { color: var(--red); }
-.vinyl .act .retry .sample-thumb {
+.sample-thumb {
   display: inline-block; width: 26px; height: 26px; object-fit: cover;
   vertical-align: -8px; margin-right: 9px;
   background: var(--frame); padding: 2px;
@@ -222,8 +234,9 @@ button.frame:disabled { cursor: default; }
   width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
   background: var(--frame); padding: 3px;
   box-shadow: 1px 2px 5px rgba(24,20,14,.2);
-  transition: transform .18s var(--ease-wall);
+  opacity: 0; transition: opacity .35s ease, transform .18s var(--ease-wall);
 }
+.strip .mini img.ld { opacity: 1; }
 @media (hover: hover) { .strip .mini:hover img { transform: translateY(-2px); } }
 .strip .mini:active img { transform: translateY(1px); }
 .strip .mini:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
