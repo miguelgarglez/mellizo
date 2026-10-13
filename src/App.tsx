@@ -183,7 +183,8 @@ export default function App() {
       setMatchAr(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
       setMatch(prev => {
         if (!prev) return r;
-        setRunners(rs => [prev, ...rs.filter(x => x.id !== r.id && x.id !== prev.id)]);
+        // stable order: the demoted winner joins the end, others stay put
+        setRunners(rs => [...rs.filter(x => x.id !== r.id && x.id !== prev.id), prev]);
         return r;
       });
       setSwappedAt(Date.now());
@@ -207,9 +208,11 @@ export default function App() {
   const px = mobile ? 12 : 355;
   const ax = mobile ? 200 : 720;
   const pairCx = (px + ax + awEff) / 2;
-  const pairBottom = Math.max(pTop + ph, aTop + ah);
-  // caption anchors to a fixed slot so swapping artworks never moves the controls
-  const capTop = Math.max(pairBottom, seamY + (mobile ? 112 : 170)) + (mobile ? 30 : 44);
+  // the pair hangs in a fixed-height slot: labels and caption never move,
+  // regardless of the photo's or artwork's aspect ratio
+  const slotH = mobile ? 115 : 175;
+  const labelY = seamY + slotH + 8;
+  const capTop = seamY + slotH + (mobile ? 40 : 46);
   const capLeft = mobile
     ? Math.min(Math.max(pairCx - 150, 10), 375 - 310)
     : pairCx - 185;
@@ -284,7 +287,7 @@ export default function App() {
             ? <span className="choose">Choose a photo</span>
             : <span className="choose"><b>Drop a photo</b><i>or click to choose</i></span>)}
           <span className={result ? "accn" : "reslabel"}
-            style={result ? { top: pairBottom - pTop + 8 } : undefined}>
+            style={result ? { top: labelY - pTop } : undefined}>
             {result ? "your photograph" : photo ? "your photograph" : "reserved · your photograph"}
           </span>
         </button>
@@ -306,8 +309,8 @@ export default function App() {
           </div>
           {match?.objectUrl
             ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}
-                style={result ? { top: pairBottom - aTop + 8 } : undefined}>{match.id.replace("met-", "met #").replace("cle-", "cle #")}</a>
-            : <span className="accn" style={result ? { top: pairBottom - aTop + 8 } : undefined}>{match?.id}</span>}
+                style={result ? { top: labelY - aTop } : undefined}>{match.id.replace("met-", "met #").replace("cle-", "cle #")}</a>
+            : <span className="accn" style={result ? { top: labelY - aTop } : undefined}>{match?.id}</span>}
         </div>
 
         {/* resemblance mark */}
@@ -337,7 +340,9 @@ export default function App() {
                   </button>
                 )}
               </div>
-              {showRunners && (
+              {showRunners && (() => {
+                const showScores = runners.some(r => r.score !== match.score);
+                return (
                 <div className="strip">
                   <div className="striplabel">hang a near miss instead</div>
                   <div className="minis">
@@ -346,12 +351,13 @@ export default function App() {
                       <img src={r.img} alt={r.title}
                         ref={el => { if (el?.complete && el.naturalWidth) el.classList.add("ld"); }}
                         onLoad={e => e.currentTarget.classList.add("ld")} />
-                      <span>{r.score}</span>
+                      {showScores && <span>{r.score}</span>}
                     </button>
                   ))}
                   </div>
                 </div>
-              )}
+                );
+              })()}
             </>
           )}
         </div>

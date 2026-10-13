@@ -211,22 +211,31 @@ button.frame:disabled { cursor: default; }
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase; margin-bottom: 10px;
 }
-.caption .title { font-family: "Fraunces", serif; font-size: 24px; font-weight: 500; letter-spacing: -0.01em; }
-.caption .who { font-size: 13px; color: var(--ink-soft); margin-top: 5px; }
+/* title reserves two lines and clamps so actions and the strip stay anchored */
+.caption .title {
+  font-family: "Fraunces", serif; font-size: 24px; font-weight: 500; letter-spacing: -0.01em;
+  min-height: 58px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.caption .who {
+  font-size: 13px; color: var(--ink-soft); margin-top: 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .caption .verdict {
-  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .18em;
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .14em;
   text-transform: uppercase; color: var(--ink-soft); margin-top: 14px;
+  min-height: 2.4em; /* reserves two lines so swaps don't shift the actions */
 }
 .caption .verdict b { color: var(--red); font-weight: 500; }
 .caption .limited {
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .06em;
   text-transform: lowercase; color: var(--ink-soft); margin-top: 8px;
 }
-.caption .actions { margin-top: 18px; display: flex; gap: 22px; justify-content: center; }
+.caption .actions { margin-top: 18px; display: flex; gap: 30px; justify-content: center; }
 .caption .actions button {
   background: none; border: 0; font: inherit; font-size: 13px; color: var(--ink);
   text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--ink);
-  padding: 14px 4px; margin: -10px -4px; cursor: pointer;
+  padding: 16px 6px; margin: -12px -6px; cursor: pointer;
 }
 @media (hover: hover) {
   .caption .actions button:hover { color: var(--red); text-decoration-color: var(--red); }
