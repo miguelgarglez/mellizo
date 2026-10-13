@@ -10,7 +10,7 @@ export function place(i: Art[], entries: [number, number, number, number, boolea
 
 // entry hang — indices into WALL_ART
 export const ENTRY_DESKTOP: [number, number, number, number, boolean?][] = [
-  [11, 46, 54, 380, true],
+  [11, 30, 40, 300, true],
   [1, 472, 48, 168],
   [7, -52, 402, 200],
   [9, 190, 396, 248],
@@ -28,7 +28,7 @@ export const ENTRY_DESKTOP: [number, number, number, number, boolean?][] = [
 ];
 
 export const ENTRY_MOBILE: [number, number, number, number, boolean?][] = [
-  [20, 250, 195, 130],
+  [20, 250, 222, 130],
   [14, -20, 548, 160],
   [17, 170, 580, 110],
   [10, 330, 585, 90],
@@ -40,7 +40,7 @@ export const RESULT_DESKTOP: [number, number, number, number, boolean?][] = [
   [1, 270, -60, 170],
   [9, -40, 430, 220],
   [18, 180, 620, 190],
-  [10, 840, 560, 120],
+  [10, 430, 715, 110],
   [6, 1180, 50, 230],
   [3, 1290, 300, 150],
   [8, 1020, 660, 190],
@@ -48,7 +48,7 @@ export const RESULT_DESKTOP: [number, number, number, number, boolean?][] = [
 ];
 
 export const RESULT_MOBILE: [number, number, number, number, boolean?][] = [
-  [14, -30, 540, 150],
-  [17, 185, 560, 120],
-  [10, 330, 510, 90],
+  [14, -30, 645, 140],
+  [17, 140, 662, 110],
+  [10, 292, 640, 85],
 ];

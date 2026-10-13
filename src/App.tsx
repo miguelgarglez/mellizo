@@ -11,6 +11,7 @@ const haptics = new WebHaptics();
 
 const STATUS = {
   reading: "Reading your photograph…",
+  warming: "Warming the eyes — a one-time download",
   embedding: "Studying its features…",
   searching: "Walking the galleries…",
 };
@@ -40,6 +41,7 @@ export default function App() {
   const busyRef = useRef(false);
   const jobRef = useRef(0);
   const photoRef = useRef<Photo | null>(null);
+  const clipReady = useRef(false);
 
   const result = phase === "result";
   const openPicker = () => inputRef.current?.click();
@@ -71,20 +73,38 @@ export default function App() {
       setPhotoTracked({ url, w: img.naturalWidth, h: img.naturalHeight });
       url = null;
 
-      setStatus(STATUS.embedding);
       const { warmup, embedImage } = await import("./clip");
+      if (!clipReady.current) setStatus(STATUS.warming);
       warmup(setModelPct);
       const v = await embedImage(img);
+      clipReady.current = true;
+      if (job !== jobRef.current) return;
+
+      setStatus(STATUS.embedding);
+      // give the status a beat, and keep the embedding honest
+      await new Promise(r => setTimeout(r, 350));
       if (job !== jobRef.current) return;
 
       setStatus(STATUS.searching);
       const matches = await findMatches(v, 5);
       if (job !== jobRef.current) return;
       if (!matches.length) throw new Error("empty");
+
+      // decode the twin and resolve its proportions before the wall moves —
+      // the rehang lands on final geometry, not a guess that shifts mid-flight
+      const ar = await new Promise<number>((resolve) => {
+        const t = new Image();
+        t.onload = () => resolve(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
+        t.onerror = () => resolve(4 / 3);
+        t.src = matches[0].img;
+      });
+      if (job !== jobRef.current) return;
+      setMatchAr(ar);
       setMatch(matches[0]);
       setRunners(matches.slice(1));
       setPhase("result");
-      haptics.trigger("success");
+      // the mark stamps ~900ms in — confirm exactly when it lands
+      setTimeout(() => haptics.trigger("success"), 900);
     } catch {
       if (job !== jobRef.current) return;
       setPhase("error");
@@ -112,39 +132,70 @@ export default function App() {
     setPhase("idle"); setStatus(""); setModelPct(0);
   }, []);
 
+  // bundled example — same pipeline as a visitor photo
+  const useSample = useCallback(async () => {
+    if (busyRef.current) return;
+    try {
+      const res = await fetch("/sample.jpg");
+      const blob = await res.blob();
+      handleFile(new File([blob], "sample.jpg", { type: "image/jpeg" }));
+    } catch { /* leave idle */ }
+  }, [handleFile]);
+
+  // near misses hang in the twin's place — the pair survives, the candidate changes
+  const swapRunner = useCallback((r: Match) => {
+    setMatch(prev => prev ? (setRunners(rs => [prev, ...rs.filter(x => x.id !== r.id)]), r) : r);
+    const t = new Image();
+    t.onload = () => setMatchAr(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
+    t.src = r.img;
+    haptics.trigger("light");
+  }, []);
+
   // ----- pair geometry (result) -----
   const pw = mobile ? 160 : 300;
   const ph0 = photo ? pw * (photo.h / photo.w) : pw * 0.75;
   const ph = Math.min(ph0, mobile ? 200 : 330);
   const pwEff = ph < ph0 ? ph * (photo ? photo.w / photo.h : 4 / 3) : pw;
-  const aw = mobile ? 140 : 210;
+  const aw = mobile ? 162 : 268;
   const ah0 = aw * matchAr;
-  const ah = Math.min(ah0, mobile ? 280 : 420);
+  const ah = Math.min(ah0, mobile ? 260 : 340);
   const awEff = ah < ah0 ? ah / matchAr : aw;
-  const seamY = mobile ? 210 : 340;
+  const seamY = mobile ? 196 : 330;
   const pTop = seamY - ph / 2 - 5;
   const aTop = seamY - ah / 2 - 5;
-  const px = mobile ? 18 : 360;
-  const ax = mobile ? 218 : 700;
-  const capTop = Math.max(pTop + ph, aTop + ah) + (mobile ? 30 : 46);
-  const capLeft = mobile ? (px + ax + aw) / 2 - 150 : 450;
+  const px = mobile ? 12 : 355;
+  const ax = mobile ? 200 : 720;
+  const pairCx = (px + pwEff + ax + awEff) / 2;
+  const capTop = Math.max(pTop + ph, aTop + ah) + (mobile ? 34 : 52);
+  const capLeft = mobile
+    ? Math.min(Math.max(pairCx - 150, 10), 375 - 310)
+    : pairCx - 185;
   const verdictWord = (s: number) =>
     s >= 85 ? "uncanny" : s >= 70 ? "striking" : s >= 55 ? "a family resemblance" : "a distant cousin";
 
   // ----- frame positions: entry hang ↔ result rehang -----
+  // Frames keep their entry left/top as the base position; the rehang moves
+  // them with transform so the compositor owns the motion, not layout.
   const entry = place(WALL_ART, mobile ? ENTRY_MOBILE : ENTRY_DESKTOP);
   const resultHang = place(WALL_ART, mobile ? RESULT_MOBILE : RESULT_DESKTOP);
   const frames = entry.map(p => {
     const r = resultHang.find(q => q.art.id === p.art.id);
     const gone = result && !r;
-    const pos = result && r ? r : result ? { ...p, x: p.x < 700 ? p.x - 1500 : p.x + 1500 } : p;
-    return { p, pos, gone };
+    const tx = result ? (r ? r.x : (p.x < 700 ? p.x - 1600 : p.x + 1600)) - p.x : 0;
+    const ty = result && r ? r.y - p.y : 0;
+    const w = result && r ? r.w : p.w;
+    return { p, tx, ty, w, gone, deep: r?.deep ?? p.deep };
   });
 
-  // reserved / photo frame position
-  const resPos = result
-    ? { x: px, y: pTop, w: pwEff, h: ph + 10 }
-    : mobile ? { x: 30, y: 172, w: 200, h: 278 } : { x: 742, y: 105, w: 240, h: 330 };
+  // reserved frame: entry spot is the base, result translates it into the pair
+  const resBase = mobile ? { x: 30, y: 172, w: 200, h: 278 } : { x: 742, y: 105, w: 240, h: 330 };
+  const resT = result
+    ? { x: px - resBase.x, y: pTop - resBase.y, w: pwEff, h: ph + 10 }
+    : { x: 0, y: 0, w: resBase.w, h: resBase.h };
+
+  // the twin rests off-view right, slides to its result spot
+  const twinBase = { x: 1700, y: 220 };
+  const twinT = result ? { x: ax + (aw - awEff) / 2 - twinBase.x, y: aTop - twinBase.y } : { x: 0, y: 0 };
 
   return (
     <div
@@ -155,14 +206,14 @@ export default function App() {
     >
       <div className="floor-line" />
       <div className="stage">
-        {frames.map(({ p, pos, gone }) => {
-          const h = (pos.w * p.art.h) / p.art.w;
+        {frames.map(({ p, tx, ty, w, gone, deep }) => {
+          const h = (w * p.art.h) / p.art.w;
           return (
             <div className={`frame${gone ? " gone" : ""}`} key={p.art.id}
-              style={{ left: pos.x, top: pos.y, width: pos.w, height: h + 10 }}>
+              style={{ left: p.x, top: p.y, width: w, height: h + 10, transform: `translate(${tx}px, ${ty}px)` }}>
               <div className="moulding">
-                <div className={`mat${(pos as any).deep ? " deep" : ""}`}>
-                  <img src={p.art.img} alt={p.art.title} loading="lazy" />
+                <div className={`mat${deep ? " deep" : ""}`}>
+                  <img src={p.art.img} alt={p.art.title} decoding="async" />
                 </div>
               </div>
               <span className="accn">{p.art.id.replace("met-", "met #")}</span>
@@ -173,7 +224,10 @@ export default function App() {
         {/* the reserved spot → the visitor's photograph */}
         <button
           className={`frame reserved pick${result ? " pair" : ""}`}
-          style={{ left: resPos.x, top: resPos.y, width: resPos.w, height: resPos.h }}
+          style={{
+            left: resBase.x, top: resBase.y, width: resT.w, height: resT.h,
+            transform: `translate(${resT.x}px, ${resT.y}px)`,
+          }}
           onClick={openPicker}
           disabled={result || phase === "busy"}
           aria-label="Choose a photo to hang"
@@ -194,16 +248,15 @@ export default function App() {
         {/* the twin slides in from off-view */}
         <div
           className={`frame twin${result ? "" : " gone"}`}
-          style={{ left: result ? ax + (aw - awEff) / 2 : 1700, top: result ? aTop : 220, width: awEff, height: ah + 10 }}
+          style={{
+            left: twinBase.x, top: twinBase.y, width: awEff, height: ah + 10,
+            transform: `translate(${twinT.x}px, ${twinT.y}px)`,
+          }}
           aria-hidden={!result}
         >
           <div className="moulding">
             <div className="mat">
-              {match && <img src={match.img} alt={match.title}
-                onLoad={e => {
-                  const im = e.currentTarget;
-                  if (im.naturalWidth) setMatchAr(im.naturalHeight / im.naturalWidth);
-                }} />}
+              {match && <img src={match.img} alt={match.title} />}
             </div>
           </div>
           {match?.objectUrl
@@ -224,9 +277,10 @@ export default function App() {
         }}>
           {result && match && (
             <>
+              {mobile && <div className="cap-brand">mellizo · a museum of resemblances</div>}
               <div className="title">{match.title}</div>
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
-              <div className="verdict">resemblance · {verdictWord(match.score)}</div>
+              <div className="verdict">resemblance <b>{match.score}</b> · {verdictWord(match.score)}</div>
               <div className="actions">
                 <button onClick={reset}>hang another</button>
                 {runners.length > 0 && (
@@ -239,12 +293,12 @@ export default function App() {
           )}
         </div>
         {showRunners && result && (
-          <div className="strip" style={{ left: mobile ? capLeft + 60 : 470, top: capTop + 118 }}>
-            {runners.slice(0, 4).map(r => (
-              <a key={r.id} className="mini" href={r.objectUrl} target="_blank" rel="noreferrer">
+          <div className="strip" style={{ left: mobile ? Math.min(pairCx - 108, 159) : pairCx - 130, top: capTop + (mobile ? 190 : 140) }}>
+            {runners.slice(0, mobile ? 3 : 4).map(r => (
+              <button key={r.id} className="mini" onClick={() => swapRunner(r)} aria-label={`Hang ${r.title} instead`}>
                 <img src={r.img} alt={r.title} />
                 <span>{r.score}</span>
-              </a>
+              </button>
             ))}
           </div>
         )}
@@ -266,10 +320,18 @@ export default function App() {
                   ? "The collection finds its match on this device. Your photo is never uploaded."
                   : "Drop any photo onto the wall. Eighteen thousand open artworks answer, and the photo itself never leaves your device."}
           </p>
-          {phase === "error" && (
+          {phase === "error" ? (
             <p className={`act${mobile ? " tap" : ""}`}><button className="retry" onClick={openPicker}>try again</button></p>
-          )}
+          ) : phase === "idle" && !mobile ? (
+            <p className="act"><button className="retry" onClick={useSample}>or hang one of ours</button></p>
+          ) : null}
         </div>
+
+        {/* on mobile the sample link hangs under the reserved frame's label */}
+        {mobile && phase === "idle" && (
+          <button className="retry sample-under" style={{ left: resBase.x + resBase.w / 2, top: resBase.y + resBase.h + 56 }}
+            onClick={useSample}>or hang one of ours</button>
+        )}
 
         {!mobile && (
           <div className="wlabel" style={result ? { left: 62, top: 742 } : { left: 210, top: 740 }}>

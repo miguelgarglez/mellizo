@@ -41,14 +41,17 @@ body {
 .frame {
   position: absolute;
   transition:
-    left 1.05s var(--ease-wall), top 1.05s var(--ease-wall),
+    transform 1.05s var(--ease-wall),
     width 1.05s var(--ease-wall), height 1.05s var(--ease-wall),
     opacity .7s ease;
 }
 .frame.gone { opacity: 0; pointer-events: none; }
+/* in the result the pair owns the room; the rest of the hang steps back */
+.phase-result .frame:not(.reserved):not(.twin):not(.gone) { opacity: .55; }
 .frame .moulding {
   background: var(--frame); padding: 5px; height: 100%;
   box-shadow: 1px 2px 4px rgba(24,20,14,.15), 3px 8px 16px -8px rgba(24,20,14,.22);
+  transition: transform .3s var(--ease-wall), box-shadow .3s ease;
 }
 .frame .mat {
   background: var(--label); height: 100%; padding: 7%;
@@ -57,14 +60,18 @@ body {
 }
 .frame .mat.deep { padding: 13%; }
 .frame img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.93) contrast(1.01); }
+.reserved .mat img { object-fit: contain; }
 .frame .accn {
   position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
-  font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .08em;
+  font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .08em;
   color: #7a7263; white-space: nowrap; opacity: 0; transition: opacity .25s;
 }
-.frame:hover .accn, .frame.pair .accn, .frame.twin .accn { opacity: 1; }
-.accn.link { color: #8d8574; text-decoration: none; border-bottom: 1px solid transparent; }
-.accn.link:hover { color: var(--ink); border-bottom-color: var(--ink); }
+.frame.pair .accn, .frame.twin .accn { opacity: 1; }
+@media (hover: hover) { .frame:hover .accn { opacity: 1; } }
+.accn.link { color: #8d8574; text-decoration: none; padding: 8px 10px; margin: -8px -10px; border-bottom: 1px solid transparent; }
+@media (hover: hover) { .accn.link:hover { color: var(--ink); border-bottom-color: var(--ink); } }
+.accn.link:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; color: var(--ink); }
+.accn.link:active { color: var(--red); }
 
 /* ---------- reserved hanging position ---------- */
 button.frame { border: 0; background: none; text-align: inherit; font: inherit; cursor: pointer; }
@@ -72,7 +79,7 @@ button.frame:disabled { cursor: default; }
 .reserved .mat {
   background: #f2eee4;
   box-shadow: inset 0 0 0 1px rgba(24,20,14,.10);
-  transition: background .5s ease;
+  transition: background .5s ease, padding .8s ease;
 }
 /* the empty frame is itself the upload control */
 .reserved .choose {
@@ -80,10 +87,20 @@ button.frame:disabled { cursor: default; }
   display: inline-block; white-space: nowrap;
   background: var(--label); border: 1px solid var(--hairline);
   color: var(--ink); font-size: 13px; padding: 14px 20px; min-height: 48px;
+  transition: border-color .2s, transform .12s ease;
 }
 .reserved:focus-visible { outline: 2px solid var(--red); outline-offset: 6px; }
-.drag .reserved .mat { background: #eae3d1; }
-.drag .reserved .moulding { box-shadow: 1px 2px 5px rgba(24,20,14,.16), 4px 14px 30px -6px rgba(196,52,43,.28); }
+@media (hover: hover) {
+  .reserved:not(:disabled):hover .mat { background: #ece7da; }
+  .reserved:not(:disabled):hover .choose { border-color: var(--ink); }
+}
+.reserved:not(:disabled):active .choose { transform: translateX(-50%) translateY(1px); }
+/* a file over the wall — the frame leans in to receive it */
+.drag .reserved .mat { background: #eae3d1; box-shadow: inset 0 0 0 1px rgba(196,52,43,.45); }
+.drag .reserved .moulding {
+  transform: scale(1.02);
+  box-shadow: 1px 2px 5px rgba(24,20,14,.16), 4px 14px 30px -6px rgba(196,52,43,.28);
+}
 .reserved .reslabel {
   position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
   display: inline-block; white-space: nowrap;
@@ -108,6 +125,13 @@ button.frame:disabled { cursor: default; }
 .vinyl .act.tap .retry { display: inline-block; padding: 13px 6px 13px 0; margin: -4px 0; }
 .vinyl .act .retry:hover { border-bottom-color: var(--red); color: var(--red); }
 .vinyl .act .retry:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.sample-under {
+  position: absolute; transform: translateX(-50%);
+  appearance: none; background: none; border: 0; font: inherit; cursor: pointer;
+  font-size: 12.5px; color: var(--ink-soft); padding: 13px 6px;
+}
+.sample-under:hover { color: var(--red); }
+.sample-under:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .vinyl .brandline {
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase;
@@ -134,38 +158,62 @@ button.frame:disabled { cursor: default; }
 .mark.on { opacity: 1; transform: scale(1); }
 
 /* ---------- caption ---------- */
-.caption { position: absolute; opacity: 0; transition: opacity .6s ease .9s; }
+.caption { position: absolute; opacity: 0; transition: opacity .6s ease 1s; }
 .caption.on { opacity: 1; }
+.caption .cap-brand {
+  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  color: var(--ink-soft); text-transform: lowercase; margin-bottom: 10px;
+}
 .caption .title { font-family: "Fraunces", serif; font-size: 24px; font-weight: 500; letter-spacing: -0.01em; }
 .caption .who { font-size: 13px; color: var(--ink-soft); margin-top: 5px; }
 .caption .verdict {
-  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .18em;
   text-transform: uppercase; color: var(--ink-soft); margin-top: 14px;
 }
 .caption .verdict b { color: var(--red); font-weight: 500; }
-.caption .actions { margin-top: 18px; display: flex; gap: 22px; }
+.caption .actions { margin-top: 18px; display: flex; gap: 22px; justify-content: center; }
 .caption .actions button {
   background: none; border: 0; font: inherit; font-size: 13px; color: var(--ink);
-  border-bottom: 1px solid var(--ink); padding: 0 0 2px; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--ink);
+  padding: 14px 4px; margin: -10px -4px; cursor: pointer;
 }
-.caption .actions button:hover { color: var(--red); border-bottom-color: var(--red); }
+@media (hover: hover) {
+  .caption .actions button:hover { color: var(--red); text-decoration-color: var(--red); }
+}
+.caption .actions button:active { color: var(--red); }
 .caption .actions button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 
 /* ---------- near-miss strip ---------- */
 .strip { position: absolute; display: flex; gap: 14px; }
-.strip .mini { position: relative; width: 58px; display: block; }
+.strip .mini {
+  position: relative; width: 58px; display: block;
+  background: none; border: 0; padding: 8px 0; cursor: pointer;
+  animation: miniIn .4s var(--ease-wall) backwards;
+}
+.strip .mini:nth-child(2) { animation-delay: .06s; }
+.strip .mini:nth-child(3) { animation-delay: .12s; }
+.strip .mini:nth-child(4) { animation-delay: .18s; }
+@keyframes miniIn { from { opacity: 0; transform: translateY(8px) scale(.92); } }
 .strip .mini img {
   width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
   background: var(--frame); padding: 3px;
   box-shadow: 1px 2px 5px rgba(24,20,14,.2);
+  transition: transform .18s var(--ease-wall);
 }
+@media (hover: hover) { .strip .mini:hover img { transform: translateY(-2px); } }
+.strip .mini:active img { transform: translateY(1px); }
+.strip .mini:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .strip .mini span {
-  position: absolute; top: -4px; right: -4px; width: 20px; height: 20px;
+  position: absolute; top: 4px; right: -4px; width: 20px; height: 20px;
   border-radius: 50%; background: var(--red); color: #fdf8f0;
   font-family: "IBM Plex Mono", monospace; font-size: 8px;
   display: flex; align-items: center; justify-content: center;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .frame, .mark, .caption, .wlabel, .vinyl { transition-duration: .01s !important; transition-delay: 0s !important; }
+  .frame, .frame .moulding, .frame .mat, .frame .accn, .mark, .caption, .wlabel, .vinyl,
+  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img {
+    transition-duration: .01s !important; transition-delay: 0s !important;
+    animation-duration: .01s !important; animation-delay: 0s !important;
+  }
 }
