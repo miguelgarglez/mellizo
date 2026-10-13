@@ -309,7 +309,8 @@ export default function App() {
           </div>
           {match?.objectUrl
             ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}
-                style={result ? { top: labelY - aTop } : undefined}>{match.id.replace("met-", "met #").replace("cle-", "cle #")}</a>
+                style={result ? { top: labelY - aTop } : undefined}>
+                {match.id.startsWith("cle-") ? "cleveland museum of art" : match.id.replace("met-", "met #")} ↗</a>
             : <span className="accn" style={result ? { top: labelY - aTop } : undefined}>{match?.id}</span>}
         </div>
 
@@ -328,9 +329,11 @@ export default function App() {
         }}>
           {result && match && (
             <>
-              <div className="title">{match.title}</div>
+              <div className="title" title={match.title}>{match.title}</div>
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
-              <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId ? "its nearest neighbor" : "another resemblance"}</div>
+              <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId
+                ? (limited ? "its nearest neighbor" : "its nearest of 22,669 works")
+                : "another resemblance"}</div>
               {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}
               <div className="actions">
                 <button onClick={reset}>hang another</button>
