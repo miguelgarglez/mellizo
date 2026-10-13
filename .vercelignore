@@ -1,0 +1,8 @@
+data/
+explore/
+explore.html
+video/
+node_modules
+dist
+.env*
+!.env.example

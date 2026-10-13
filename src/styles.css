@@ -1,0 +1,334 @@
+:root {
+  --wall: #f6f3ec;
+  --wall-hi: #faf8f2;
+  --ink: #1a1815;
+  --ink-soft: #6b6458;
+  --frame: #131210;
+  --red: #c4342b;
+  --hairline: #ddd7c9;
+  --label: #fdfcf8;
+  --ease-wall: cubic-bezier(.32, .72, .2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--wall);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ---------- room + scaled stage ---------- */
+.room {
+  position: relative; width: 100vw; height: 100dvh; overflow: hidden;
+  background: radial-gradient(140% 90% at 50% -10%, var(--wall-hi) 0%, var(--wall) 55%, #ece7db 100%);
+}
+.floor-line {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 9%;
+  background: linear-gradient(to bottom, #e7e2d4, #d9d3c2);
+  border-top: 1px solid #d3cdbd;
+}
+.stage {
+  position: absolute; left: 50%; top: 50%; width: 1440px; height: 860px;
+  transform-origin: center;
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+}
+.room.m .stage { width: 375px; height: 720px; }
+/* too small to fit at the readable floor — the wall scrolls from the top */
+.room.scroll { overflow-y: auto; }
+.room.scroll .floor-line { display: none; }
+.room.scroll .stage {
+  top: 0;
+  transform: translate(-50%, 0) scale(var(--scale, 1));
+  transform-origin: top center;
+}
+
+/* ---------- frame ---------- */
+.frame {
+  position: absolute;
+  transition:
+    transform 1.05s var(--ease-wall),
+    width 1.05s var(--ease-wall), height 1.05s var(--ease-wall),
+    opacity .7s ease;
+}
+.frame.gone { opacity: 0; pointer-events: none; }
+/* in the result the pair owns the room; the rest of the hang steps back —
+   paintings dim, frames keep their material so the wall stays physical */
+.phase-result .frame:not(.reserved):not(.twin):not(.gone) { opacity: .78; }
+.phase-result .frame:not(.reserved):not(.twin):not(.gone) img {
+  filter: saturate(.45) brightness(1.1); opacity: .72;
+}
+.frame .moulding {
+  background: var(--frame); padding: 5px; height: 100%;
+  box-shadow: 1px 2px 4px rgba(24,20,14,.15), 3px 8px 16px -8px rgba(24,20,14,.22);
+  transition: transform .3s var(--ease-wall), box-shadow .3s ease;
+}
+.frame .mat {
+  background: var(--label); height: 100%; padding: 7%;
+  box-shadow: inset 0 0 0 1px rgba(24,20,14,.06);
+  transition: padding .8s ease;
+}
+.frame .mat.deep { padding: 13%; }
+.frame .mat .broken {
+  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 8%;
+  box-shadow: inset 0 0 0 1px rgba(24,20,14,.08);
+}
+.frame .mat .broken span {
+  font-family: "Fraunces", serif; font-style: italic; font-size: calc(13px * var(--fz, 1));
+  color: var(--ink-soft); line-height: 1.45;
+}
+.frame .mat .broken button {
+  appearance: none; background: none; border: 0; padding: 6px 4px; margin-top: 8px;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10.5px * var(--fz, 1)); letter-spacing: .08em;
+  color: var(--ink); cursor: pointer; border-bottom: 1px solid var(--ink);
+}
+@media (hover: hover) { .frame .mat .broken button:hover { color: var(--red); border-bottom-color: var(--red); } }
+.frame .mat .broken button:active { color: var(--red); }
+.frame .mat .broken button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.frame img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.93) contrast(1.01); transition: filter .7s ease, opacity .7s ease; }
+.reserved .mat img { object-fit: contain; }
+.frame .accn {
+  position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  font-family: "IBM Plex Mono", monospace; font-size: calc(11.5px * var(--fz, 1)); letter-spacing: .04em;
+  color: #544e3f; white-space: nowrap; opacity: 0; transition: opacity .25s;
+}
+.frame.pair .accn, .frame.twin .accn { opacity: 1; }
+@media (hover: hover) { .frame:hover .accn { opacity: 1; } }
+.accn.link { color: #8d8574; text-decoration: none; padding: 16px 12px; margin: -16px -12px; border-bottom: 1px solid transparent; }
+@media (hover: hover) { .accn.link:hover { color: var(--ink); border-bottom-color: var(--ink); } }
+.accn.link:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; color: var(--ink); }
+.accn.link:active { color: var(--red); }
+
+/* ---------- reserved hanging position ---------- */
+button.frame { border: 0; background: none; text-align: inherit; font: inherit; cursor: pointer; }
+button.frame:disabled { cursor: default; }
+.reserved .mat {
+  background: #f2eee4;
+  box-shadow: inset 0 0 0 1px rgba(24,20,14,.10);
+  transition: background .5s ease, padding .8s ease;
+}
+/* the empty frame is itself the upload control */
+.reserved .choose {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: inline-block; white-space: nowrap;
+  background: var(--label); border: 1px solid var(--hairline);
+  color: var(--ink); font-size: calc(13px * var(--fz, 1)); padding: 10px 20px; min-height: 48px;
+  transition: border-color .2s, transform .12s ease;
+}
+.reserved .choose b { display: block; font-weight: 500; }
+.reserved .choose i {
+  display: block; font-style: normal; font-size: calc(10.5px * var(--fz, 1));
+  color: var(--ink-soft); margin-top: 3px;
+}
+.reserved:focus-visible { outline: 2px solid var(--red); outline-offset: 6px; }
+@media (hover: hover) {
+  .reserved:not(:disabled):hover .mat { background: #ece7da; }
+  .reserved:not(:disabled):hover .choose { border-color: var(--ink); }
+}
+.reserved:not(:disabled):active .choose { transform: translateX(-50%) translateY(1px); }
+/* a file over the wall — the frame leans in to receive it */
+.drag .reserved .mat { background: #eae3d1; box-shadow: inset 0 0 0 1px rgba(196,52,43,.45); }
+.drag .reserved .moulding {
+  transform: scale(1.02);
+  box-shadow: 1px 2px 5px rgba(24,20,14,.16), 4px 14px 30px -6px rgba(196,52,43,.28);
+}
+.reserved .reslabel {
+  position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  display: inline-block; white-space: nowrap;
+  background: var(--label); border: 1px solid var(--hairline);
+  color: var(--ink-soft); font-family: "IBM Plex Mono", monospace;
+  font-size: calc(10px * var(--fz, 1)); letter-spacing: .12em; padding: 6px 12px;
+}
+
+/* ---------- vinyl ---------- */
+.vinyl { position: absolute; transition: opacity .45s ease; }
+.vinyl.off { opacity: 0; pointer-events: none; transition-duration: .25s; }
+.vinyl h1 { font-family: "Fraunces", serif; font-weight: 400; font-size: calc(40px * var(--fz, 1)); line-height: 1.04; letter-spacing: -0.015em; color: var(--ink); }
+.room.m .vinyl h1 { font-size: calc(30px * var(--fz, 1)); margin-top: 4px; }
+.vinyl h1 em { font-style: italic; font-weight: 300; }
+.vinyl .sub { margin-top: 16px; font-size: calc(14px * var(--fz, 1)); line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
+.room.m .vinyl .sub { font-size: calc(12.5px * var(--fz, 1)); max-width: 300px; margin-top: 10px; }
+.vinyl .sub.status { font-family: "IBM Plex Mono", monospace; font-size: calc(12px * var(--fz, 1)); letter-spacing: .06em; color: var(--ink); }
+/* the wait always has a heartbeat: real progress during download,
+   an indeterminate pulse while the model thinks and galleries answer */
+.busybar { margin-top: 14px; width: 200px; height: 2px; background: var(--hairline); overflow: hidden; }
+.busybar .fill { height: 100%; background: var(--red); transition: width .3s ease; }
+.busybar .fill.ind {
+  width: 34%; animation: ind 1.15s var(--ease-wall) infinite alternate;
+}
+@keyframes ind { from { transform: translateX(-30%); } to { transform: translateX(230%); } }
+.vinyl .act { margin-top: 20px; font-size: calc(13.5px * var(--fz, 1)); color: var(--ink); }
+.vinyl .act .retry {
+  appearance: none; background: none; border: 0; padding: 0 0 2px;
+  font: inherit; color: inherit; cursor: pointer;
+  border-bottom: 1px solid var(--ink);
+}
+.vinyl .act.tap .retry { display: inline-block; padding: 15px 8px 15px 0; margin: -4px 0; }
+@media (hover: hover) { .vinyl .act .retry:hover { border-bottom-color: var(--red); color: var(--red); } }
+.vinyl .act .retry:active { color: var(--red); }
+.sample-thumb {
+  display: inline-block; width: 26px; height: 26px; object-fit: cover;
+  vertical-align: -8px; margin-right: 9px;
+  background: var(--frame); padding: 2px;
+}
+.vinyl .act .retry:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.sample-under {
+  position: absolute; transform: translateX(-50%);
+  appearance: none; font: inherit; cursor: pointer;
+  font-size: calc(12.5px * var(--fz, 1)); color: var(--ink); padding: 10px 14px;
+  background: var(--label); border: 1px solid var(--hairline);
+}
+@media (hover: hover) { .sample-under:hover { color: var(--red); } }
+.sample-under:active { color: var(--red); }
+.sample-under:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.vinyl .brandline {
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .18em;
+  color: var(--ink-soft); text-transform: lowercase;
+}
+
+/* ---------- wall label (brand) ---------- */
+.wlabel {
+  position: absolute; width: 235px; background: var(--label);
+  border: 1px solid var(--hairline); padding: 13px 16px;
+  transition: left 1.05s var(--ease-wall), top 1.05s var(--ease-wall);
+}
+.wlabel .t { font-family: "Fraunces", serif; font-size: calc(18px * var(--fz, 1)); font-weight: 500; letter-spacing: -0.01em; }
+.wlabel .s { margin-top: 3px; font-size: calc(10.5px * var(--fz, 1)); letter-spacing: .05em; color: var(--ink-soft); }
+
+/* ---------- reveal choreography ----------
+   frames clear the room (0s) → the twin arrives (+0.3s) →
+   the mark stamps (+1.15s) → the caption settles (+1.3s).
+   The mark and caption enter through one-shot animations with a
+   backwards fill, never a transition-delay — so on the way out the
+   base transition always applies and the exit runs without delay. */
+.frame.twin { transition-delay: 0s; }
+.phase-result .frame.twin { transition-delay: .3s; }
+.phase-result .mark { animation: markIn .45s cubic-bezier(.2,1.4,.4,1) 1.15s backwards; }
+.phase-result .caption { animation: capIn .55s var(--ease-wall) 1.3s backwards; }
+@keyframes markIn { from { opacity: 0; transform: scale(.6); } }
+@keyframes capIn { from { opacity: 0; transform: translateY(8px); } }
+.phase-busy .frame.twin { transition-delay: 0s; }
+/* a swapped candidate arrives through a soft focus pull + a brief ring pulse */
+.frame.twin .mat img { animation: twinIn .5s ease; }
+@keyframes twinIn { from { opacity: 0; filter: saturate(.5) blur(2px); } }
+.frame.twin .flashring {
+  position: absolute; inset: -4px; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--red);
+  animation: ringOut .9s ease forwards;
+}
+@keyframes ringOut { from { opacity: 1; } to { opacity: 0; } }
+/* opening the picker dims the room further so the strip reads as a tool;
+   works that hang in the strip's landing zone step off the wall entirely
+   so the thumbnails always land on empty wall, not on dimmed paintings */
+.strip-open .frame:not(.reserved):not(.twin):not(.gone) { opacity: .32; }
+.strip-open .frame:not(.reserved):not(.twin):not(.gone) img { filter: saturate(.3) brightness(1.14); opacity: .55; }
+.strip-open .frame:not(.reserved):not(.twin):not(.gone).under { opacity: 0; pointer-events: none; }
+
+/* ---------- resemblance mark ---------- */
+.mark {
+  position: absolute; width: 31px; height: 31px; border-radius: 50%;
+  background: var(--red); color: #fdf8f0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(11px * var(--fz, 1)); font-weight: 500;
+  opacity: 0; transform: scale(.6);
+  transition: opacity .45s ease, transform .45s cubic-bezier(.2,1.4,.4,1);
+}
+.mark.on { opacity: 1; transform: scale(1); }
+
+/* ---------- caption ---------- */
+.caption { position: absolute; opacity: 0; transform: translateY(8px); transition: opacity .55s ease, transform .55s var(--ease-wall); }
+.caption.on { opacity: 1; transform: translateY(0); }
+.caption .cap-brand {
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .18em;
+  color: var(--ink-soft); text-transform: lowercase; margin-bottom: 10px;
+}
+.caption .title {
+  font-family: "Fraunces", serif; font-size: calc(24px * var(--fz, 1)); font-weight: 500; letter-spacing: -0.01em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.caption .who {
+  font-size: calc(13px * var(--fz, 1)); color: var(--ink-soft); margin-top: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.caption .detail-note {
+  font-family: "Fraunces", serif; font-style: italic; font-size: calc(12px * var(--fz, 1));
+  color: var(--ink-soft); margin-top: 4px; min-height: 1.5em;
+}
+.caption .verdict {
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10.5px * var(--fz, 1)); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-soft); margin-top: 14px;
+  min-height: 2.4em; /* reserves two lines so swaps don't shift the actions */
+}
+.caption .verdict b { color: var(--red); font-weight: 500; }
+.caption:focus { outline: none; }
+.caption .score-note {
+  font-family: "Fraunces", serif; font-style: italic; font-size: calc(12px * var(--fz, 1));
+  color: var(--ink-soft); margin-top: 6px;
+}
+.caption .limited {
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .06em;
+  text-transform: lowercase; color: var(--ink-soft); margin-top: 8px;
+}
+.caption .actions { margin-top: 18px; display: flex; gap: 30px; justify-content: center; }
+.caption .actions button {
+  background: none; border: 0; font: inherit; font-size: calc(13px * var(--fz, 1)); color: var(--ink);
+  text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--ink);
+  padding: 16px 6px; margin: -12px -6px; cursor: pointer;
+}
+@media (hover: hover) {
+  .caption .actions button:hover { color: var(--red); text-decoration-color: var(--red); }
+}
+.caption .actions button:active { color: var(--red); }
+.caption .actions button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+
+/* ---------- near-miss strip ---------- */
+.strip { margin-top: 16px; }
+.strip .striplabel {
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .05em;
+  color: #5f584a; margin-bottom: 10px;
+}
+.strip .minis { display: flex; gap: 14px; justify-content: center; }
+.cap-fixed {
+  position: absolute; left: 20px; top: 24px;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .18em;
+  color: var(--ink-soft); text-transform: lowercase;
+}
+.strip .mini {
+  position: relative; width: 58px; display: block;
+  background: none; border: 0; padding: 8px 0; cursor: pointer;
+  animation: miniIn .4s var(--ease-wall) backwards;
+}
+.strip .mini:nth-child(2) { animation-delay: .06s; }
+.strip .mini:nth-child(3) { animation-delay: .12s; }
+.strip .mini:nth-child(4) { animation-delay: .18s; }
+@keyframes miniIn { from { opacity: 0; transform: translateY(8px) scale(.92); } }
+.strip .mini img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+  background: var(--frame); padding: 3px;
+  box-shadow: 1px 2px 5px rgba(24,20,14,.2);
+  opacity: 0; transition: opacity .35s ease, transform .18s var(--ease-wall);
+}
+.strip .mini img.ld { opacity: 1; }
+@media (hover: hover) { .strip .mini:hover img { transform: translateY(-2px); } }
+.strip .mini:active img { transform: translateY(1px); }
+.strip .mini:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.strip .mini span {
+  position: absolute; top: 4px; right: -4px; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--red); color: #fdf8f0;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(8px * var(--fz, 1));
+  display: flex; align-items: center; justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame, .frame .moulding, .frame .mat, .frame .accn, .mark, .caption, .wlabel, .vinyl,
+  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img, .frame.twin .mat img {
+    transition-duration: .01s !important; transition-delay: 0s !important;
+    animation-duration: .01s !important; animation-delay: 0s !important;
+  }
+  /* loops and pulses don't compress into faster loops — they stop */
+  .busybar .fill.ind { animation: none; transform: translateX(100%); }
+  .frame.twin .flashring { animation: none; opacity: 0; }
+}

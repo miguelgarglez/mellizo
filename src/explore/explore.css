@@ -1,0 +1,130 @@
+:root {
+  --wall: #f6f3ec;
+  --wall-hi: #faf8f2;
+  --ink: #1a1815;
+  --ink-soft: #6b6458;
+  --frame: #131210;
+  --red: #c4342b;
+  --brass: #a8894f;
+  --hairline: #ddd7c9;
+  --label: #fdfcf8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--wall);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+.serif { font-family: "Fraunces", serif; }
+.mono { font-family: "IBM Plex Mono", monospace; }
+
+/* ---------- room + scaled stage ---------- */
+.room {
+  position: relative; width: 100vw; height: 100dvh; overflow: hidden;
+  background:
+    radial-gradient(140% 90% at 50% -10%, var(--wall-hi) 0%, var(--wall) 55%, #ece7db 100%);
+}
+.floor-line {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 9%;
+  background: linear-gradient(to bottom, #e7e2d4, #d9d3c2);
+  border-top: 1px solid #d3cdbd;
+}
+.stage { position: absolute; left: 50%; top: 50%; width: 1440px; height: 860px; transform-origin: center; transform: translate(-50%, -50%) scale(var(--scale, 1)); }
+@media (max-width: 700px) {
+  .stage { width: 375px; height: 720px; }
+}
+
+/* ---------- frame ---------- */
+.frame { position: absolute; }
+.frame .moulding {
+  background: var(--frame); padding: 5px; height: 100%;
+  box-shadow: 1px 2px 4px rgba(24,20,14,.15), 3px 8px 16px -8px rgba(24,20,14,.22);
+}
+.frame .mat {
+  background: var(--label); height: 100%; padding: 7%;
+  box-shadow: inset 0 0 0 1px rgba(24,20,14,.06);
+}
+.frame .mat.deep { padding: 13%; }
+.frame img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.93) contrast(1.01); }
+.frame .accn {
+  position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .08em;
+  color: #7a7263; white-space: nowrap; opacity: 0; transition: opacity .25s;
+}
+.frame:hover .accn { opacity: 1; }
+
+/* ---------- reserved hanging position ---------- */
+.reserved .mat {
+  background: #f2eee4;
+  box-shadow: inset 0 0 0 1px rgba(24,20,14,.10);
+}
+/* the empty frame is itself the upload control */
+.reserved .choose {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: inline-block; white-space: nowrap;
+  background: var(--label); border: 1px solid var(--hairline);
+  color: var(--ink); font-size: 13px; padding: 14px 20px; min-height: 48px;
+}
+.reslabel {
+  margin-top: 10px; display: inline-block; white-space: nowrap;
+  background: var(--label); border: 1px solid var(--hairline);
+  color: var(--ink-soft); font-family: "IBM Plex Mono", monospace;
+  font-size: 10px; letter-spacing: .12em; padding: 6px 12px;
+}
+
+/* ---------- vinyl invitation ---------- */
+.vinyl { position: absolute; }
+.vinyl h1 { font-family: "Fraunces", serif; font-weight: 400; font-size: 44px; line-height: 1.04; letter-spacing: -0.015em; color: var(--ink); }
+.vinyl h1 em { font-style: italic; font-weight: 300; }
+.vinyl .sub { margin-top: 16px; font-size: 14px; line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
+.vinyl .act { margin-top: 20px; font-size: 13.5px; color: var(--ink); }
+.vinyl .act u { text-decoration: none; border-bottom: 1px solid var(--ink); padding-bottom: 2px; cursor: pointer; }
+.vinyl .act.tap u { display: inline-block; padding: 13px 6px 13px 0; margin: -4px 0; }
+.vinyl .act u:hover { border-bottom-color: var(--red); color: var(--red); }
+.vinyl .brandline {
+  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  color: var(--ink-soft); text-transform: lowercase;
+}
+
+/* ---------- wall label (brand) ---------- */
+.wlabel {
+  position: absolute; width: 235px; background: var(--label);
+  border: 1px solid var(--hairline);
+  padding: 13px 16px;
+}
+.wlabel .t { font-family: "Fraunces", serif; font-size: 18px; font-weight: 500; letter-spacing: -0.01em; }
+.wlabel .s { margin-top: 3px; font-size: 10.5px; letter-spacing: .05em; color: var(--ink-soft); }
+
+/* ---------- the photo (stand-in) ---------- */
+.photo {
+  position: absolute;
+  background:
+    radial-gradient(60% 50% at 70% 30%, rgba(255,214,140,.9) 0%, rgba(255,180,90,.4) 35%, transparent 60%),
+    linear-gradient(180deg, #3a5a7c 0%, #7d9ab0 40%, #c98f52 62%, #4a4a3c 78%, #2e2f26 100%);
+}
+.photo::after {
+  content: ""; position: absolute; left: 8%; right: 8%; bottom: 0; height: 30%;
+  background: linear-gradient(180deg, #43452f, #23241b); border-radius: 40% 60% 0 0;
+}
+
+/* ---------- resemblance mark ---------- */
+.mark {
+  position: absolute; width: 31px; height: 31px; border-radius: 50%;
+  background: var(--red); color: #fdf8f0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+}
+
+/* ---------- wall caption (result) ---------- */
+.caption { position: absolute; }
+.caption .title { font-family: "Fraunces", serif; font-size: 24px; font-weight: 500; letter-spacing: -0.01em; }
+.caption .who { font-size: 13px; color: var(--ink-soft); margin-top: 5px; }
+.caption .verdict {
+  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--ink-soft); margin-top: 14px;
+}
+.caption .verdict b { color: var(--red); font-weight: 500; }
