@@ -37,9 +37,9 @@ export const ENTRY_MOBILE: [number, number, number, number, boolean?][] = [
 // result hang — the wall after it rearranges; works pushed to the perimeter
 export const RESULT_DESKTOP: [number, number, number, number, boolean?][] = [
   [11, -140, 60, 400, true],
-  [1, 270, -60, 170],
+  [1, 255, -115, 170],
   [9, -40, 430, 220],
-  [18, 180, 620, 190],
+  [18, 200, 530, 140],
   [10, 380, 715, 100],
   [6, 1180, 50, 230],
   [3, 1290, 300, 150],

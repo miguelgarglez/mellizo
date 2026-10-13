@@ -3,6 +3,7 @@ import { WebHaptics } from "web-haptics";
 import { WALL_ART, type Match } from "./data";
 import { ENTRY_DESKTOP, ENTRY_MOBILE, RESULT_DESKTOP, RESULT_MOBILE, place } from "./hang";
 import { findMatches } from "./match";
+import { mobileLayout } from "./viewport";
 
 type Phase = "idle" | "busy" | "result" | "error";
 type Photo = { url: string; w: number; h: number };
@@ -20,9 +21,9 @@ const STATUS = {
 };
 
 function useMobile() {
-  const [m, setM] = useState(window.innerWidth < 700);
+  const [m, setM] = useState(mobileLayout(window.innerWidth, window.innerHeight));
   useEffect(() => {
-    const f = () => setM(window.innerWidth < 700);
+    const f = () => setM(mobileLayout(window.innerWidth, window.innerHeight));
     window.addEventListener("resize", f);
     return () => window.removeEventListener("resize", f);
   }, []);
@@ -53,6 +54,7 @@ export default function App() {
   // the image URL that failed to paint — a broken twin never poisons the next
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const swapRef = useRef(0);
+  const capRef = useRef<HTMLDivElement>(null);
 
   const result = phase === "result";
   const openPicker = () => inputRef.current?.click();
@@ -111,12 +113,17 @@ export default function App() {
       // lands on final geometry, not a guess that shifts mid-flight. The
       // corpus sends real image dims; the decode only warms the paint and
       // covers rows with unmeasured dims.
-      const probe = new Promise<number>((resolve) => {
-        const t = new Image();
-        t.onload = () => resolve(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
-        t.onerror = () => { if (job === jobRef.current) setFailedSrc(matches[0].img); resolve(4 / 3); };
-        t.src = matches[0].img;
-      });
+      const probe = Promise.race<number>([
+        new Promise<number>((resolve) => {
+          const t = new Image();
+          t.onload = () => resolve(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
+          t.onerror = () => { if (job === jobRef.current) setFailedSrc(matches[0].img); resolve(4 / 3); };
+          t.src = matches[0].img;
+        }),
+        // a slow work must not hold the wall hostage — the <img> still
+        // paints (or fails honestly) when it arrives
+        new Promise<number>(r => setTimeout(() => r(4 / 3), 9000)),
+      ]);
       const ar = matches[0].w && matches[0].h
         ? matches[0].h / matches[0].w
         : await probe;
@@ -136,6 +143,8 @@ export default function App() {
       }));
       setLimited(limited);
       setPhase("result");
+      // the live region tells the room who answered
+      setStatus(`Its twin hangs beside it — ${matches[0].title}, resemblance ${matches[0].score}`);
       // warm the near-miss thumbs so the strip opens with paint, not black
       matches.slice(1, 5).forEach(m => { const t = new Image(); t.src = m.img; });
       // the mark stamps late in the reveal — confirm exactly when it lands
@@ -164,6 +173,14 @@ export default function App() {
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
   }, [handleFile]);
+
+  // hand keyboard users the result when the reveal lands
+  useEffect(() => {
+    if (result && match) {
+      const t = setTimeout(() => capRef.current?.focus({ preventScroll: true }), 1400);
+      return () => clearTimeout(t);
+    }
+  }, [result, match?.id]);
 
   const reset = useCallback(() => {
     jobRef.current++;
@@ -230,7 +247,6 @@ export default function App() {
   // the pair hangs in a fixed-height slot: labels and caption never move,
   // regardless of the photo's or artwork's aspect ratio
   const slotH = mobile ? 115 : 175;
-  const labelY = seamY + slotH + 8;
   const capTop = seamY + slotH + (mobile ? 40 : 46);
   const capLeft = mobile
     ? Math.min(Math.max(pairCx - 150, 10), 375 - 310)
@@ -262,7 +278,7 @@ export default function App() {
 
   return (
     <div
-      className={`room${drag ? " drag" : ""} phase-${phase}${showRunners && result ? " strip-open" : ""}`}
+      className={`room${mobile ? " m" : ""}${drag ? " drag" : ""} phase-${phase}${showRunners && result ? " strip-open" : ""}`}
       onDragOver={e => { e.preventDefault(); setDrag(true); }}
       onDragLeave={() => setDrag(false)}
       onDrop={e => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files?.[0]); }}
@@ -272,7 +288,7 @@ export default function App() {
         {frames.map(({ p, tx, ty, w, gone, deep }) => {
           const h = (w * p.art.h) / p.art.w;
           return (
-            <div className={`frame${gone ? " gone" : ""}`} key={p.art.id}
+            <div className={`frame${gone ? " gone" : ""}`} key={p.art.id} aria-hidden={gone || undefined}
               style={{ left: p.x, top: p.y, width: w, height: h + 10, transform: `translate(${tx}px, ${ty}px)` }}>
               <div className="moulding">
                 <div className={`mat${deep ? " deep" : ""}`}>
@@ -293,8 +309,7 @@ export default function App() {
           }}
           onClick={openPicker}
           disabled={result || phase === "busy"}
-          aria-label="Choose a photo to hang"
-          aria-hidden={result}
+          aria-label={result ? "Your photograph" : "Choose a photo to hang"}
           tabIndex={result ? -1 : 0}
         >
           <div className="moulding">
@@ -305,8 +320,7 @@ export default function App() {
           {!photo && !result && (mobile
             ? <span className="choose">Choose a photo</span>
             : <span className="choose"><b>Drop a photo</b><i>or click to choose</i></span>)}
-          <span className={result ? "accn" : "reslabel"}
-            style={result ? { top: labelY - pTop } : undefined}>
+          <span className={result ? "accn" : "reslabel"}>
             {result ? "your photograph" : photo ? "your photograph" : "reserved · your photograph"}
           </span>
         </button>
@@ -323,16 +337,18 @@ export default function App() {
           <div className="moulding">
             <div className="mat">
               {match && (failedSrc === match.img
-                ? <div className="broken"><span>the work stayed in storage</span></div>
+                ? <div className="broken">
+                    <span>the work stayed in storage</span>
+                    <button type="button" onClick={() => setFailedSrc(null)}>ask again</button>
+                  </div>
                 : <img key={match.id} src={match.img} alt={match.title} onError={() => setFailedSrc(match.img)} />)}
             </div>
             {swappedAt > 0 && <div className="flashring" key={swappedAt} />}
           </div>
           {match?.objectUrl
-            ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}
-                style={result ? { top: labelY - aTop } : undefined}>
+            ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}>
                 {match.id.startsWith("cle-") ? "cleveland museum of art" : match.id.replace("met-", "met #")} ↗</a>
-            : <span className="accn" style={result ? { top: labelY - aTop } : undefined}>{match?.id}</span>}
+            : <span className="accn">{match?.id}</span>}
         </div>
 
         {/* resemblance mark */}
@@ -343,8 +359,8 @@ export default function App() {
             top: seamY - 15.5,
           }}>{match?.score ?? 0}</div>
 
-        {/* caption on the wall */}
-        <div className={`caption${result ? " on" : ""}`} style={{
+        {/* caption on the wall — receives focus as the reveal lands */}
+        <div ref={capRef} className={`caption${result ? " on" : ""}`} tabIndex={-1} role="region" aria-label="the match" style={{
           left: capLeft, top: capTop,
           width: mobile ? 300 : 370, textAlign: "center",
         }}>
@@ -356,6 +372,7 @@ export default function App() {
               <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId
                 ? (limited ? "its nearest neighbor" : "its nearest of 22,099 works")
                 : "another resemblance"}</div>
+              <div className="score-note">an automated estimate of visual closeness — it reads surfaces, not meaning</div>
               {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}
               <div className="actions">
                 <button onClick={reset}>hang another</button>

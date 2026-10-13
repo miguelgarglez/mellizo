@@ -35,7 +35,7 @@ body {
   transform-origin: center;
   transform: translate(-50%, -50%) scale(var(--scale, 1));
 }
-@media (max-width: 699px) { .stage { width: 375px; height: 720px; } }
+.room.m .stage { width: 375px; height: 720px; }
 
 /* ---------- frame ---------- */
 .frame {
@@ -64,7 +64,7 @@ body {
 }
 .frame .mat.deep { padding: 13%; }
 .frame .mat .broken {
-  height: 100%; display: flex; align-items: center; justify-content: center;
+  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; padding: 8%;
   box-shadow: inset 0 0 0 1px rgba(24,20,14,.08);
 }
@@ -72,6 +72,14 @@ body {
   font-family: "Fraunces", serif; font-style: italic; font-size: 13px;
   color: var(--ink-soft); line-height: 1.45;
 }
+.frame .mat .broken button {
+  appearance: none; background: none; border: 0; padding: 6px 4px; margin-top: 8px;
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .08em;
+  color: var(--ink); cursor: pointer; border-bottom: 1px solid var(--ink);
+}
+@media (hover: hover) { .frame .mat .broken button:hover { color: var(--red); border-bottom-color: var(--red); } }
+.frame .mat .broken button:active { color: var(--red); }
+.frame .mat .broken button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .frame img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.93) contrast(1.01); transition: filter .7s ease, opacity .7s ease; }
 .reserved .mat img { object-fit: contain; }
 .frame .accn {
@@ -240,6 +248,11 @@ button.frame:disabled { cursor: default; }
   min-height: 2.4em; /* reserves two lines so swaps don't shift the actions */
 }
 .caption .verdict b { color: var(--red); font-weight: 500; }
+.caption:focus { outline: none; }
+.caption .score-note {
+  font-family: "Fraunces", serif; font-style: italic; font-size: 12px;
+  color: var(--ink-soft); margin-top: 6px;
+}
 .caption .limited {
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .06em;
   text-transform: lowercase; color: var(--ink-soft); margin-top: 8px;
@@ -296,7 +309,8 @@ button.frame:disabled { cursor: default; }
 
 @media (prefers-reduced-motion: reduce) {
   .frame, .frame .moulding, .frame .mat, .frame .accn, .mark, .caption, .wlabel, .vinyl,
-  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img, .frame.twin .mat img {
+  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img, .frame.twin .mat img,
+  .frame.twin .flashring, .busybar .fill, .busybar .fill.ind {
     transition-duration: .01s !important; transition-delay: 0s !important;
     animation-duration: .01s !important; animation-delay: 0s !important;
   }
