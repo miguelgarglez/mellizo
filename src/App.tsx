@@ -3,7 +3,7 @@ import { WebHaptics } from "web-haptics";
 import { WALL_ART, type Match } from "./data";
 import { ENTRY_DESKTOP, ENTRY_MOBILE, RESULT_DESKTOP, RESULT_MOBILE, place } from "./hang";
 import { findMatches } from "./match";
-import { mobileLayout } from "./viewport";
+import { mobileLayout, stageScrolls } from "./viewport";
 
 type Phase = "idle" | "busy" | "result" | "error";
 type Photo = { url: string; w: number; h: number };
@@ -20,18 +20,22 @@ const STATUS = {
   searching: "Walking the galleries…",
 };
 
-function useMobile() {
-  const [m, setM] = useState(mobileLayout(window.innerWidth, window.innerHeight));
+function useViewport() {
+  const measure = () => ({
+    mobile: mobileLayout(window.innerWidth, window.innerHeight),
+    scrolls: stageScrolls(window.innerWidth, window.innerHeight),
+  });
+  const [v, setV] = useState(measure);
   useEffect(() => {
-    const f = () => setM(mobileLayout(window.innerWidth, window.innerHeight));
+    const f = () => setV(measure());
     window.addEventListener("resize", f);
     return () => window.removeEventListener("resize", f);
   }, []);
-  return m;
+  return v;
 }
 
 export default function App() {
-  const mobile = useMobile();
+  const { mobile, scrolls } = useViewport();
   const [phase, setPhase] = useState<Phase>("idle");
   const [status, setStatus] = useState("");
   const [photo, setPhoto] = useState<Photo | null>(null);
@@ -174,19 +178,29 @@ export default function App() {
     return () => document.removeEventListener("paste", onPaste);
   }, [handleFile]);
 
-  // hand keyboard users the result when the reveal lands
+  // hand keyboard users the result when the reveal lands — unless
+  // they've already found the controls, and instantly under reduced motion
   useEffect(() => {
-    if (result && match) {
-      const t = setTimeout(() => capRef.current?.focus({ preventScroll: true }), 1400);
-      return () => clearTimeout(t);
-    }
+    if (!result || !match) return;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t = setTimeout(() => {
+      const a = document.activeElement;
+      if (a instanceof HTMLElement && a !== document.body && a.closest(".stage")) return;
+      capRef.current?.focus({ preventScroll: true });
+    }, reduced ? 0 : 1400);
+    return () => clearTimeout(t);
   }, [result, match?.id]);
+
+  const resRef = useRef<HTMLButtonElement>(null);
 
   const reset = useCallback(() => {
     jobRef.current++;
     setPhotoTracked(null);
     setMatch(null); setRunners([]); setShowRunners(false);
     setPhase("idle"); setStatus(""); setModelPct(0);
+    // hand the visitor back their frame
+    if (document.activeElement instanceof HTMLElement && document.activeElement.closest(".stage"))
+      setTimeout(() => resRef.current?.focus({ preventScroll: true }), 650);
   }, []);
 
   // bundled example — same pipeline as a visitor photo
@@ -278,7 +292,7 @@ export default function App() {
 
   return (
     <div
-      className={`room${mobile ? " m" : ""}${drag ? " drag" : ""} phase-${phase}${showRunners && result ? " strip-open" : ""}`}
+      className={`room${mobile ? " m" : ""}${scrolls ? " scroll" : ""}${drag ? " drag" : ""} phase-${phase}${showRunners && result ? " strip-open" : ""}`}
       onDragOver={e => { e.preventDefault(); setDrag(true); }}
       onDragLeave={() => setDrag(false)}
       onDrop={e => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files?.[0]); }}
@@ -302,6 +316,7 @@ export default function App() {
 
         {/* the reserved spot → the visitor's photograph */}
         <button
+          ref={resRef}
           className={`frame reserved pick${result ? " pair" : ""}`}
           style={{
             left: resBase.x, top: resBase.y, width: resT.w, height: resT.h,
@@ -353,7 +368,7 @@ export default function App() {
 
         {/* resemblance mark */}
         <div className={`mark${result ? " on" : ""}`}
-          title="resemblance — how close it sits to your photo, relative to the works searched"
+          title="resemblance — an automated estimate of visual closeness"
           style={{
             left: px + pwEff + (ax - px - pwEff) / 2 - 15.5,
             top: seamY - 15.5,
@@ -421,7 +436,7 @@ export default function App() {
               : phase === "error"
                 ? status
                 : mobile
-                  ? "The collection finds its match on this device. Your photo is never uploaded."
+                  ? "Your photo is read on this device and never uploaded. The collection answers."
                   : "Drop any photo onto the wall. Open artworks answer, and the photo itself never leaves your device."}
           </p>
           {phase === "busy" && (

@@ -36,6 +36,13 @@ body {
   transform: translate(-50%, -50%) scale(var(--scale, 1));
 }
 .room.m .stage { width: 375px; height: 720px; }
+/* too small to fit at the readable floor — the wall scrolls from the top */
+.room.scroll { overflow-y: auto; }
+.room.scroll .stage {
+  top: 0;
+  transform: translate(-50%, 0) scale(var(--scale, 1));
+  transform-origin: top center;
+}
 
 /* ---------- frame ---------- */
 .frame {
@@ -228,14 +235,12 @@ button.frame:disabled { cursor: default; }
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase; margin-bottom: 10px;
 }
-/* title reserves two lines and clamps so actions and the strip stay anchored */
 .caption .title {
   font-family: "Fraunces", serif; font-size: 24px; font-weight: 500; letter-spacing: -0.01em;
-  min-height: 58px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .caption .who {
-  font-size: 13px; color: var(--ink-soft); margin-top: 5px;
+  font-size: 13px; color: var(--ink-soft); margin-top: 6px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .caption .detail-note {
@@ -309,9 +314,11 @@ button.frame:disabled { cursor: default; }
 
 @media (prefers-reduced-motion: reduce) {
   .frame, .frame .moulding, .frame .mat, .frame .accn, .mark, .caption, .wlabel, .vinyl,
-  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img, .frame.twin .mat img,
-  .frame.twin .flashring, .busybar .fill, .busybar .fill.ind {
+  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img, .frame.twin .mat img {
     transition-duration: .01s !important; transition-delay: 0s !important;
     animation-duration: .01s !important; animation-delay: 0s !important;
   }
+  /* loops and pulses don't compress into faster loops — they stop */
+  .busybar .fill.ind { animation: none; transform: translateX(100%); }
+  .frame.twin .flashring { animation: none; opacity: 0; }
 }
