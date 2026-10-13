@@ -192,6 +192,16 @@ export default function App() {
   }, [result, match?.id]);
 
   const resRef = useRef<HTMLButtonElement>(null);
+  const roomRef = useRef<HTMLDivElement>(null);
+
+  // every phase change re-anchors the wall at its top — the reveal and
+  // the fresh hang both live up there
+  useEffect(() => {
+    roomRef.current?.scrollTo({
+      top: 0,
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  }, [phase]);
 
   const reset = useCallback(() => {
     jobRef.current++;
@@ -292,6 +302,7 @@ export default function App() {
 
   return (
     <div
+      ref={roomRef}
       className={`room${mobile ? " m" : ""}${scrolls ? " scroll" : ""}${drag ? " drag" : ""} phase-${phase}${showRunners && result ? " strip-open" : ""}`}
       onDragOver={e => { e.preventDefault(); setDrag(true); }}
       onDragLeave={() => setDrag(false)}
@@ -425,10 +436,10 @@ export default function App() {
           ? { left: 20, top: 30, width: 335 }
           : { left: 1005, top: 130, width: 275 }}>
           {mobile && <div className="brandline">mellizo · a museum of resemblances</div>}
-          <h1 style={mobile ? { fontSize: 30, marginTop: 10 } : { fontSize: 40 }}>
+          <h1>
             {phase === "error" ? "That one slipped off the wall." : <>Find your photograph's <em>twin</em>.</>}
           </h1>
-          <p className={`sub${phase === "busy" ? " status" : ""}`} aria-live="polite" style={mobile ? { fontSize: 12.5, maxWidth: 300, marginTop: 10 } : undefined}>
+          <p className={`sub${phase === "busy" ? " status" : ""}`} aria-live="polite">
             {phase === "busy" || phase === "result"
               ? status === STATUS.warming && dlDone
                 ? STATUS.preparing

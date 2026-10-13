@@ -38,6 +38,7 @@ body {
 .room.m .stage { width: 375px; height: 720px; }
 /* too small to fit at the readable floor — the wall scrolls from the top */
 .room.scroll { overflow-y: auto; }
+.room.scroll .floor-line { display: none; }
 .room.scroll .stage {
   top: 0;
   transform: translate(-50%, 0) scale(var(--scale, 1));
@@ -76,12 +77,12 @@ body {
   box-shadow: inset 0 0 0 1px rgba(24,20,14,.08);
 }
 .frame .mat .broken span {
-  font-family: "Fraunces", serif; font-style: italic; font-size: 13px;
+  font-family: "Fraunces", serif; font-style: italic; font-size: calc(13px * var(--fz, 1));
   color: var(--ink-soft); line-height: 1.45;
 }
 .frame .mat .broken button {
   appearance: none; background: none; border: 0; padding: 6px 4px; margin-top: 8px;
-  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .08em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10.5px * var(--fz, 1)); letter-spacing: .08em;
   color: var(--ink); cursor: pointer; border-bottom: 1px solid var(--ink);
 }
 @media (hover: hover) { .frame .mat .broken button:hover { color: var(--red); border-bottom-color: var(--red); } }
@@ -91,7 +92,7 @@ body {
 .reserved .mat img { object-fit: contain; }
 .frame .accn {
   position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
-  font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .04em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(11.5px * var(--fz, 1)); letter-spacing: .04em;
   color: #544e3f; white-space: nowrap; opacity: 0; transition: opacity .25s;
 }
 .frame.pair .accn, .frame.twin .accn { opacity: 1; }
@@ -114,12 +115,12 @@ button.frame:disabled { cursor: default; }
   position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
   display: inline-block; white-space: nowrap;
   background: var(--label); border: 1px solid var(--hairline);
-  color: var(--ink); font-size: 13px; padding: 10px 20px; min-height: 48px;
+  color: var(--ink); font-size: calc(13px * var(--fz, 1)); padding: 10px 20px; min-height: 48px;
   transition: border-color .2s, transform .12s ease;
 }
 .reserved .choose b { display: block; font-weight: 500; }
 .reserved .choose i {
-  display: block; font-style: normal; font-size: 10.5px;
+  display: block; font-style: normal; font-size: calc(10.5px * var(--fz, 1));
   color: var(--ink-soft); margin-top: 3px;
 }
 .reserved:focus-visible { outline: 2px solid var(--red); outline-offset: 6px; }
@@ -139,16 +140,18 @@ button.frame:disabled { cursor: default; }
   display: inline-block; white-space: nowrap;
   background: var(--label); border: 1px solid var(--hairline);
   color: var(--ink-soft); font-family: "IBM Plex Mono", monospace;
-  font-size: 10px; letter-spacing: .12em; padding: 6px 12px;
+  font-size: calc(10px * var(--fz, 1)); letter-spacing: .12em; padding: 6px 12px;
 }
 
 /* ---------- vinyl ---------- */
 .vinyl { position: absolute; transition: opacity .45s ease; }
 .vinyl.off { opacity: 0; pointer-events: none; transition-duration: .25s; }
-.vinyl h1 { font-family: "Fraunces", serif; font-weight: 400; font-size: 44px; line-height: 1.04; letter-spacing: -0.015em; color: var(--ink); }
+.vinyl h1 { font-family: "Fraunces", serif; font-weight: 400; font-size: calc(40px * var(--fz, 1)); line-height: 1.04; letter-spacing: -0.015em; color: var(--ink); }
+.room.m .vinyl h1 { font-size: calc(30px * var(--fz, 1)); margin-top: 10px; }
 .vinyl h1 em { font-style: italic; font-weight: 300; }
-.vinyl .sub { margin-top: 16px; font-size: 14px; line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
-.vinyl .sub.status { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .06em; color: var(--ink); }
+.vinyl .sub { margin-top: 16px; font-size: calc(14px * var(--fz, 1)); line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
+.room.m .vinyl .sub { font-size: calc(12.5px * var(--fz, 1)); max-width: 300px; margin-top: 10px; }
+.vinyl .sub.status { font-family: "IBM Plex Mono", monospace; font-size: calc(12px * var(--fz, 1)); letter-spacing: .06em; color: var(--ink); }
 /* the wait always has a heartbeat: real progress during download,
    an indeterminate pulse while the model thinks and galleries answer */
 .busybar { margin-top: 14px; width: 200px; height: 2px; background: var(--hairline); overflow: hidden; }
@@ -157,7 +160,7 @@ button.frame:disabled { cursor: default; }
   width: 34%; animation: ind 1.15s var(--ease-wall) infinite alternate;
 }
 @keyframes ind { from { transform: translateX(-30%); } to { transform: translateX(230%); } }
-.vinyl .act { margin-top: 20px; font-size: 13.5px; color: var(--ink); }
+.vinyl .act { margin-top: 20px; font-size: calc(13.5px * var(--fz, 1)); color: var(--ink); }
 .vinyl .act .retry {
   appearance: none; background: none; border: 0; padding: 0 0 2px;
   font: inherit; color: inherit; cursor: pointer;
@@ -175,14 +178,14 @@ button.frame:disabled { cursor: default; }
 .sample-under {
   position: absolute; transform: translateX(-50%);
   appearance: none; font: inherit; cursor: pointer;
-  font-size: 12.5px; color: var(--ink); padding: 10px 14px;
+  font-size: calc(12.5px * var(--fz, 1)); color: var(--ink); padding: 10px 14px;
   background: var(--label); border: 1px solid var(--hairline);
 }
 @media (hover: hover) { .sample-under:hover { color: var(--red); } }
 .sample-under:active { color: var(--red); }
 .sample-under:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .vinyl .brandline {
-  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase;
 }
 
@@ -192,8 +195,8 @@ button.frame:disabled { cursor: default; }
   border: 1px solid var(--hairline); padding: 13px 16px;
   transition: left 1.05s var(--ease-wall), top 1.05s var(--ease-wall);
 }
-.wlabel .t { font-family: "Fraunces", serif; font-size: 18px; font-weight: 500; letter-spacing: -0.01em; }
-.wlabel .s { margin-top: 3px; font-size: 10.5px; letter-spacing: .05em; color: var(--ink-soft); }
+.wlabel .t { font-family: "Fraunces", serif; font-size: calc(18px * var(--fz, 1)); font-weight: 500; letter-spacing: -0.01em; }
+.wlabel .s { margin-top: 3px; font-size: calc(10.5px * var(--fz, 1)); letter-spacing: .05em; color: var(--ink-soft); }
 
 /* ---------- reveal choreography ----------
    frames clear the room (0s) → the twin arrives (+0.3s) →
@@ -222,7 +225,7 @@ button.frame:disabled { cursor: default; }
   position: absolute; width: 31px; height: 31px; border-radius: 50%;
   background: var(--red); color: #fdf8f0;
   display: flex; align-items: center; justify-content: center;
-  font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(11px * var(--fz, 1)); font-weight: 500;
   opacity: 0; transform: scale(.6);
   transition: opacity .45s ease, transform .45s cubic-bezier(.2,1.4,.4,1);
 }
@@ -232,39 +235,39 @@ button.frame:disabled { cursor: default; }
 .caption { position: absolute; opacity: 0; transform: translateY(8px); transition: opacity .55s ease, transform .55s var(--ease-wall); }
 .caption.on { opacity: 1; transform: translateY(0); }
 .caption .cap-brand {
-  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase; margin-bottom: 10px;
 }
 .caption .title {
-  font-family: "Fraunces", serif; font-size: 24px; font-weight: 500; letter-spacing: -0.01em;
+  font-family: "Fraunces", serif; font-size: calc(24px * var(--fz, 1)); font-weight: 500; letter-spacing: -0.01em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .caption .who {
-  font-size: 13px; color: var(--ink-soft); margin-top: 6px;
+  font-size: calc(13px * var(--fz, 1)); color: var(--ink-soft); margin-top: 6px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .caption .detail-note {
-  font-family: "Fraunces", serif; font-style: italic; font-size: 12px;
+  font-family: "Fraunces", serif; font-style: italic; font-size: calc(12px * var(--fz, 1));
   color: var(--ink-soft); margin-top: 4px; min-height: 1.5em;
 }
 .caption .verdict {
-  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .14em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10.5px * var(--fz, 1)); letter-spacing: .14em;
   text-transform: uppercase; color: var(--ink-soft); margin-top: 14px;
   min-height: 2.4em; /* reserves two lines so swaps don't shift the actions */
 }
 .caption .verdict b { color: var(--red); font-weight: 500; }
 .caption:focus { outline: none; }
 .caption .score-note {
-  font-family: "Fraunces", serif; font-style: italic; font-size: 12px;
+  font-family: "Fraunces", serif; font-style: italic; font-size: calc(12px * var(--fz, 1));
   color: var(--ink-soft); margin-top: 6px;
 }
 .caption .limited {
-  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .06em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .06em;
   text-transform: lowercase; color: var(--ink-soft); margin-top: 8px;
 }
 .caption .actions { margin-top: 18px; display: flex; gap: 30px; justify-content: center; }
 .caption .actions button {
-  background: none; border: 0; font: inherit; font-size: 13px; color: var(--ink);
+  background: none; border: 0; font: inherit; font-size: calc(13px * var(--fz, 1)); color: var(--ink);
   text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--ink);
   padding: 16px 6px; margin: -12px -6px; cursor: pointer;
 }
@@ -277,13 +280,13 @@ button.frame:disabled { cursor: default; }
 /* ---------- near-miss strip ---------- */
 .strip { margin-top: 16px; }
 .strip .striplabel {
-  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .05em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .05em;
   color: #5f584a; margin-bottom: 10px;
 }
 .strip .minis { display: flex; gap: 14px; justify-content: center; }
 .cap-fixed {
   position: absolute; left: 20px; top: 24px;
-  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase;
 }
 .strip .mini {
@@ -308,7 +311,7 @@ button.frame:disabled { cursor: default; }
 .strip .mini span {
   position: absolute; top: 4px; right: -4px; width: 20px; height: 20px;
   border-radius: 50%; background: var(--red); color: #fdf8f0;
-  font-family: "IBM Plex Mono", monospace; font-size: 8px;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(8px * var(--fz, 1));
   display: flex; align-items: center; justify-content: center;
 }
 
