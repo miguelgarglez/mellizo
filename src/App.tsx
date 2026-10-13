@@ -9,10 +9,12 @@ type Photo = { url: string; w: number; h: number };
 
 const haptics = new WebHaptics();
 
+const stem = (t: string) => t.toLowerCase().replace(/\s*\(.*$/, "").trim();
+
 const STATUS = {
   reading: "Reading your photograph…",
-  warming: "Fetching the eyes · a one-time download",
-  preparing: "Starting the eyes…",
+  warming: "Downloading the matching model · a one-time fetch",
+  preparing: "Preparing photo matching…",
   embedding: "Studying its features…",
   searching: "Walking the galleries…",
 };
@@ -113,12 +115,13 @@ export default function App() {
       setMatchAr(ar);
       setMatch(matches[0]);
       setWinnerId(matches[0].id);
-      // skip near-duplicates so the strip reads as real alternatives
-      const seen = new Set([matches[0].title.toLowerCase().trim()]);
+      // skip near-duplicates so the strip reads as real alternatives:
+      // same image file or same title stem (editions, copies) count as one
+      const seen = new Set([matches[0].img, stem(matches[0].title)]);
       setRunners(matches.slice(1).filter(m => {
-        const k = m.title.toLowerCase().trim();
-        if (seen.has(k)) return false;
-        seen.add(k);
+        const k = stem(m.title);
+        if (seen.has(m.img) || seen.has(k)) return false;
+        seen.add(m.img); seen.add(k);
         return true;
       }));
       setLimited(limited);
@@ -179,7 +182,7 @@ export default function App() {
       setMatchAr(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
       setMatch(prev => {
         if (!prev) return r;
-        setRunners(rs => [prev, ...rs.filter(x => x.id !== r.id)]);
+        setRunners(rs => [prev, ...rs.filter(x => x.id !== r.id && x.id !== prev.id)]);
         return r;
       });
       haptics.trigger("light");
@@ -358,7 +361,7 @@ export default function App() {
             {phase === "error" ? "That one slipped off the wall." : <>Find your photograph's <em>twin</em>.</>}
           </h1>
           <p className={`sub${phase === "busy" ? " status" : ""}`} aria-live="polite" style={mobile ? { fontSize: 12.5, maxWidth: 300, marginTop: 10 } : undefined}>
-            {phase === "busy"
+            {phase === "busy" || phase === "result"
               ? status === STATUS.warming && dlDone
                 ? STATUS.preparing
                 : `${status}${modelPct > 0 && modelPct < 1 ? ` ${Math.round(modelPct * 100)}%` : ""}`
@@ -382,7 +385,7 @@ export default function App() {
 
         {/* on mobile the sample link hangs under the reserved frame's label */}
         {mobile && phase === "idle" && (
-          <button className="retry sample-under" style={{ left: resBase.x + resBase.w / 2, top: resBase.y + resBase.h + 56 }}
+          <button className="retry sample-under" style={{ left: resBase.x + resBase.w / 2, top: resBase.y + resBase.h + 44 }}
             onClick={useSample}><img className="sample-thumb" src="/sample.jpg" alt="" />or hang one of ours</button>
         )}
 
