@@ -29,7 +29,7 @@ export const ENTRY_DESKTOP: [number, number, number, number, boolean?][] = [
 
 export const ENTRY_MOBILE: [number, number, number, number, boolean?][] = [
   [20, 250, 222, 130],
-  [14, -20, 548, 160],
+  [14, -20, 560, 160],
   [17, 170, 580, 110],
   [10, 330, 585, 90],
 ];

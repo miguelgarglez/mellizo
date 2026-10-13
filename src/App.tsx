@@ -281,17 +281,23 @@ export default function App() {
   // them with transform so the compositor owns the motion, not layout.
   const entry = place(WALL_ART, mobile ? ENTRY_MOBILE : ENTRY_DESKTOP);
   const resultHang = place(WALL_ART, mobile ? RESULT_MOBILE : RESULT_DESKTOP);
+  // works hanging under the caption's column land where the near-miss strip
+  // opens — while the picker is open they step off the wall entirely
+  const capW = mobile ? 300 : 370;
   const frames = entry.map(p => {
     const r = resultHang.find(q => q.art.id === p.art.id);
     const gone = result && !r;
     const tx = result ? (r ? r.x : (p.x < 700 ? p.x - 1600 : p.x + 1600)) - p.x : 0;
     const ty = result && r ? r.y - p.y : 0;
     const w = result && r ? r.w : p.w;
-    return { p, tx, ty, w, gone, deep: r?.deep ?? p.deep };
+    const under = result && r != null &&
+      r.y + (r.w * r.art.h) / r.art.w + 10 > seamY + slotH &&
+      r.x < capLeft + capW && r.x + r.w > capLeft;
+    return { p, tx, ty, w, gone, under, deep: r?.deep ?? p.deep };
   });
 
   // reserved frame: entry spot is the base, result translates it into the pair
-  const resBase = mobile ? { x: 30, y: 172, w: 200, h: 278 } : { x: 742, y: 105, w: 240, h: 330 };
+  const resBase = mobile ? { x: 30, y: 184, w: 200, h: 278 } : { x: 742, y: 105, w: 240, h: 330 };
   const resT = result
     ? { x: px - resBase.x, y: pTop - resBase.y, w: pwEff, h: ph + 10 }
     : { x: 0, y: 0, w: resBase.w, h: resBase.h };
@@ -310,10 +316,10 @@ export default function App() {
     >
       <div className="floor-line" />
       <div className="stage">
-        {frames.map(({ p, tx, ty, w, gone, deep }) => {
+        {frames.map(({ p, tx, ty, w, gone, under, deep }) => {
           const h = (w * p.art.h) / p.art.w;
           return (
-            <div className={`frame${gone ? " gone" : ""}`} key={p.art.id} aria-hidden={gone || undefined}
+            <div className={`frame${gone ? " gone" : ""}${under ? " under" : ""}`} key={p.art.id} aria-hidden={gone || undefined}
               style={{ left: p.x, top: p.y, width: w, height: h + 10, transform: `translate(${tx}px, ${ty}px)` }}>
               <div className="moulding">
                 <div className={`mat${deep ? " deep" : ""}`}>
@@ -433,7 +439,7 @@ export default function App() {
 
         {/* invitation vinyl / status / error */}
         <div className={`vinyl${result ? " off" : ""}`} style={mobile
-          ? { left: 20, top: 30, width: 335 }
+          ? { left: 20, top: 20, width: 335 }
           : { left: 1005, top: 130, width: 275 }}>
           {mobile && <div className="brandline">mellizo · a museum of resemblances</div>}
           <h1>

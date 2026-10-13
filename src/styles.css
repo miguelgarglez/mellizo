@@ -147,7 +147,7 @@ button.frame:disabled { cursor: default; }
 .vinyl { position: absolute; transition: opacity .45s ease; }
 .vinyl.off { opacity: 0; pointer-events: none; transition-duration: .25s; }
 .vinyl h1 { font-family: "Fraunces", serif; font-weight: 400; font-size: calc(40px * var(--fz, 1)); line-height: 1.04; letter-spacing: -0.015em; color: var(--ink); }
-.room.m .vinyl h1 { font-size: calc(30px * var(--fz, 1)); margin-top: 10px; }
+.room.m .vinyl h1 { font-size: calc(30px * var(--fz, 1)); margin-top: 4px; }
 .vinyl h1 em { font-style: italic; font-weight: 300; }
 .vinyl .sub { margin-top: 16px; font-size: calc(14px * var(--fz, 1)); line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
 .room.m .vinyl .sub { font-size: calc(12.5px * var(--fz, 1)); max-width: 300px; margin-top: 10px; }
@@ -201,12 +201,16 @@ button.frame:disabled { cursor: default; }
 /* ---------- reveal choreography ----------
    frames clear the room (0s) → the twin arrives (+0.3s) →
    the mark stamps (+1.15s) → the caption settles (+1.3s).
-   Returning to the entry hang runs the reverse quickly, no delays. */
+   The mark and caption enter through one-shot animations with a
+   backwards fill, never a transition-delay — so on the way out the
+   base transition always applies and the exit runs without delay. */
 .frame.twin { transition-delay: 0s; }
 .phase-result .frame.twin { transition-delay: .3s; }
-.phase-result .mark { transition-delay: 1.15s; }
-.phase-result .caption { transition-delay: 1.3s; }
-.phase-busy .frame.twin, .phase-busy .mark, .phase-busy .caption { transition-delay: 0s; }
+.phase-result .mark { animation: markIn .45s cubic-bezier(.2,1.4,.4,1) 1.15s backwards; }
+.phase-result .caption { animation: capIn .55s var(--ease-wall) 1.3s backwards; }
+@keyframes markIn { from { opacity: 0; transform: scale(.6); } }
+@keyframes capIn { from { opacity: 0; transform: translateY(8px); } }
+.phase-busy .frame.twin { transition-delay: 0s; }
 /* a swapped candidate arrives through a soft focus pull + a brief ring pulse */
 .frame.twin .mat img { animation: twinIn .5s ease; }
 @keyframes twinIn { from { opacity: 0; filter: saturate(.5) blur(2px); } }
@@ -216,9 +220,12 @@ button.frame:disabled { cursor: default; }
   animation: ringOut .9s ease forwards;
 }
 @keyframes ringOut { from { opacity: 1; } to { opacity: 0; } }
-/* opening the picker dims the room further so the strip reads as a tool */
+/* opening the picker dims the room further so the strip reads as a tool;
+   works that hang in the strip's landing zone step off the wall entirely
+   so the thumbnails always land on empty wall, not on dimmed paintings */
 .strip-open .frame:not(.reserved):not(.twin):not(.gone) { opacity: .32; }
 .strip-open .frame:not(.reserved):not(.twin):not(.gone) img { filter: saturate(.3) brightness(1.14); opacity: .55; }
+.strip-open .frame:not(.reserved):not(.twin):not(.gone).under { opacity: 0; pointer-events: none; }
 
 /* ---------- resemblance mark ---------- */
 .mark {
