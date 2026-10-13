@@ -42,6 +42,9 @@ export default function App() {
   const jobRef = useRef(0);
   const photoRef = useRef<Photo | null>(null);
   const clipReady = useRef(false);
+  const stageRef = useRef<"read" | "model" | "embed" | "search">("read");
+  const [limited, setLimited] = useState(false);
+  const swapRef = useRef(0);
 
   const result = phase === "result";
   const openPicker = () => inputRef.current?.click();
@@ -59,6 +62,7 @@ export default function App() {
     if (!f || !f.type.startsWith("image/") || busyRef.current) return;
     busyRef.current = true;
     const job = ++jobRef.current;
+    stageRef.current = "read";
     setShowRunners(false);
     setModelPct(0);
     let url: string | null = null;
@@ -73,20 +77,22 @@ export default function App() {
       setPhotoTracked({ url, w: img.naturalWidth, h: img.naturalHeight });
       url = null;
 
-      const { warmup, embedImage } = await import("./clip");
+      const { warmup, ready, embedImage } = await import("./clip");
+      stageRef.current = "model";
       if (!clipReady.current) setStatus(STATUS.warming);
       warmup(setModelPct);
-      const v = await embedImage(img);
+      await ready();
       clipReady.current = true;
       if (job !== jobRef.current) return;
 
+      stageRef.current = "embed";
       setStatus(STATUS.embedding);
-      // give the status a beat, and keep the embedding honest
-      await new Promise(r => setTimeout(r, 350));
+      const v = await embedImage(img);
       if (job !== jobRef.current) return;
 
+      stageRef.current = "search";
       setStatus(STATUS.searching);
-      const matches = await findMatches(v, 5);
+      const { list: matches, limited } = await findMatches(v, 5);
       if (job !== jobRef.current) return;
       if (!matches.length) throw new Error("empty");
 
@@ -102,13 +108,19 @@ export default function App() {
       setMatchAr(ar);
       setMatch(matches[0]);
       setRunners(matches.slice(1));
+      setLimited(limited);
       setPhase("result");
-      // the mark stamps ~900ms in — confirm exactly when it lands
-      setTimeout(() => haptics.trigger("success"), 900);
+      // the mark stamps late in the reveal — confirm exactly when it lands
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      setTimeout(() => haptics.trigger("success"), reduced ? 0 : 1400);
     } catch {
       if (job !== jobRef.current) return;
       setPhase("error");
-      setStatus("The wall couldn't read that photograph. Try another image.");
+      setStatus(stageRef.current === "model"
+        ? "The eyes couldn't load — check your connection and try again."
+        : stageRef.current === "search"
+          ? "The galleries didn't answer. Try once more."
+          : "The wall couldn't read that photograph. Try another image.");
     } finally {
       if (url) URL.revokeObjectURL(url);
       busyRef.current = false;
@@ -142,13 +154,22 @@ export default function App() {
     } catch { /* leave idle */ }
   }, [handleFile]);
 
-  // near misses hang in the twin's place — the pair survives, the candidate changes
+  // near misses hang in the twin's place — resolve proportions first so the
+  // frame morphs to the right shape as the candidate arrives
   const swapRunner = useCallback((r: Match) => {
-    setMatch(prev => prev ? (setRunners(rs => [prev, ...rs.filter(x => x.id !== r.id)]), r) : r);
+    const n = ++swapRef.current;
     const t = new Image();
-    t.onload = () => setMatchAr(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
+    t.onload = () => {
+      if (n !== swapRef.current) return;
+      setMatchAr(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
+      setMatch(prev => {
+        if (!prev) return r;
+        setRunners(rs => [prev, ...rs.filter(x => x.id !== r.id)]);
+        return r;
+      });
+      haptics.trigger("light");
+    };
     t.src = r.img;
-    haptics.trigger("light");
   }, []);
 
   // ----- pair geometry (result) -----
@@ -165,7 +186,7 @@ export default function App() {
   const aTop = seamY - ah / 2 - 5;
   const px = mobile ? 12 : 355;
   const ax = mobile ? 200 : 720;
-  const pairCx = (px + pwEff + ax + awEff) / 2;
+  const pairCx = (px + ax + awEff) / 2;
   const capTop = Math.max(pTop + ph, aTop + ah) + (mobile ? 34 : 52);
   const capLeft = mobile
     ? Math.min(Math.max(pairCx - 150, 10), 375 - 310)
@@ -256,7 +277,7 @@ export default function App() {
         >
           <div className="moulding">
             <div className="mat">
-              {match && <img src={match.img} alt={match.title} />}
+              {match && <img key={match.id} src={match.img} alt={match.title} />}
             </div>
           </div>
           {match?.objectUrl
@@ -281,6 +302,7 @@ export default function App() {
               <div className="title">{match.title}</div>
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
               <div className="verdict">resemblance <b>{match.score}</b> · {verdictWord(match.score)}</div>
+              {limited && <div className="limited">pocket collection · the wall hung itself, 21 works</div>}
               <div className="actions">
                 <button onClick={reset}>hang another</button>
                 {runners.length > 0 && (
@@ -289,19 +311,19 @@ export default function App() {
                   </button>
                 )}
               </div>
+              {showRunners && (
+                <div className="strip">
+                  {runners.slice(0, mobile ? 3 : 4).map(r => (
+                    <button key={r.id} className="mini" onClick={() => swapRunner(r)} aria-label={`Hang ${r.title} instead`}>
+                      <img src={r.img} alt={r.title} />
+                      <span>{r.score}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
-        {showRunners && result && (
-          <div className="strip" style={{ left: mobile ? Math.min(pairCx - 108, 159) : pairCx - 130, top: capTop + (mobile ? 190 : 140) }}>
-            {runners.slice(0, mobile ? 3 : 4).map(r => (
-              <button key={r.id} className="mini" onClick={() => swapRunner(r)} aria-label={`Hang ${r.title} instead`}>
-                <img src={r.img} alt={r.title} />
-                <span>{r.score}</span>
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* invitation vinyl / status / error */}
         <div className={`vinyl${result ? " off" : ""}`} style={mobile
@@ -323,7 +345,7 @@ export default function App() {
           {phase === "error" ? (
             <p className={`act${mobile ? " tap" : ""}`}><button className="retry" onClick={openPicker}>try again</button></p>
           ) : phase === "idle" && !mobile ? (
-            <p className="act"><button className="retry" onClick={useSample}>or hang one of ours</button></p>
+            <p className="act"><button className="retry" onClick={useSample}><img className="sample-thumb" src="/sample.jpg" alt="" />or hang one of ours</button></p>
           ) : null}
         </div>
 

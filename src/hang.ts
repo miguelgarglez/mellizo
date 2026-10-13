@@ -48,7 +48,7 @@ export const RESULT_DESKTOP: [number, number, number, number, boolean?][] = [
 ];
 
 export const RESULT_MOBILE: [number, number, number, number, boolean?][] = [
-  [14, -30, 645, 140],
-  [17, 140, 662, 110],
-  [10, 292, 640, 85],
+  [14, -30, 668, 140],
+  [17, 140, 684, 110],
+  [10, 292, 665, 85],
 ];

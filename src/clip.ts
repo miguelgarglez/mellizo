@@ -18,6 +18,12 @@ export function warmup(onProgress?: (p: number) => void) {
   }).catch(e => { modelP = null; throw e; });
 }
 
+// resolves when the model is fully loaded — lets the UI show download vs
+// inference as separate stages instead of one long "working"
+export async function ready() {
+  await Promise.all([procP, modelP]);
+}
+
 export async function embedImage(img: HTMLImageElement): Promise<number[]> {
   warmup();
   const [proc, model] = await Promise.all([procP!, modelP!]);

@@ -68,7 +68,7 @@ body {
 }
 .frame.pair .accn, .frame.twin .accn { opacity: 1; }
 @media (hover: hover) { .frame:hover .accn { opacity: 1; } }
-.accn.link { color: #8d8574; text-decoration: none; padding: 8px 10px; margin: -8px -10px; border-bottom: 1px solid transparent; }
+.accn.link { color: #8d8574; text-decoration: none; padding: 16px 12px; margin: -16px -12px; border-bottom: 1px solid transparent; }
 @media (hover: hover) { .accn.link:hover { color: var(--ink); border-bottom-color: var(--ink); } }
 .accn.link:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; color: var(--ink); }
 .accn.link:active { color: var(--red); }
@@ -122,15 +122,22 @@ button.frame:disabled { cursor: default; }
   font: inherit; color: inherit; cursor: pointer;
   border-bottom: 1px solid var(--ink);
 }
-.vinyl .act.tap .retry { display: inline-block; padding: 13px 6px 13px 0; margin: -4px 0; }
-.vinyl .act .retry:hover { border-bottom-color: var(--red); color: var(--red); }
+.vinyl .act.tap .retry { display: inline-block; padding: 15px 8px 15px 0; margin: -4px 0; }
+@media (hover: hover) { .vinyl .act .retry:hover { border-bottom-color: var(--red); color: var(--red); } }
+.vinyl .act .retry:active { color: var(--red); }
+.vinyl .act .retry .sample-thumb {
+  display: inline-block; width: 26px; height: 26px; object-fit: cover;
+  vertical-align: -8px; margin-right: 9px;
+  background: var(--frame); padding: 2px;
+}
 .vinyl .act .retry:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .sample-under {
   position: absolute; transform: translateX(-50%);
   appearance: none; background: none; border: 0; font: inherit; cursor: pointer;
   font-size: 12.5px; color: var(--ink-soft); padding: 13px 6px;
 }
-.sample-under:hover { color: var(--red); }
+@media (hover: hover) { .sample-under:hover { color: var(--red); } }
+.sample-under:active { color: var(--red); }
 .sample-under:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .vinyl .brandline {
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
@@ -146,6 +153,19 @@ button.frame:disabled { cursor: default; }
 .wlabel .t { font-family: "Fraunces", serif; font-size: 18px; font-weight: 500; letter-spacing: -0.01em; }
 .wlabel .s { margin-top: 3px; font-size: 10.5px; letter-spacing: .05em; color: var(--ink-soft); }
 
+/* ---------- reveal choreography ----------
+   frames clear the room (0s) → the twin arrives (+0.3s) →
+   the mark stamps (+1.15s) → the caption settles (+1.3s).
+   Returning to the entry hang runs the reverse quickly, no delays. */
+.frame.twin { transition-delay: 0s; }
+.phase-result .frame.twin { transition-delay: .3s; }
+.phase-result .mark { transition-delay: 1.15s; }
+.phase-result .caption { transition-delay: 1.3s; }
+.phase-busy .frame.twin, .phase-busy .mark, .phase-busy .caption { transition-delay: 0s; }
+/* a swapped candidate arrives through a soft focus pull */
+.frame.twin .mat img { animation: twinIn .5s ease; }
+@keyframes twinIn { from { opacity: 0; filter: saturate(.5) blur(2px); } }
+
 /* ---------- resemblance mark ---------- */
 .mark {
   position: absolute; width: 31px; height: 31px; border-radius: 50%;
@@ -153,13 +173,13 @@ button.frame:disabled { cursor: default; }
   display: flex; align-items: center; justify-content: center;
   font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
   opacity: 0; transform: scale(.6);
-  transition: opacity .45s ease .75s, transform .45s cubic-bezier(.2,1.4,.4,1) .75s;
+  transition: opacity .45s ease, transform .45s cubic-bezier(.2,1.4,.4,1);
 }
 .mark.on { opacity: 1; transform: scale(1); }
 
 /* ---------- caption ---------- */
-.caption { position: absolute; opacity: 0; transition: opacity .6s ease 1s; }
-.caption.on { opacity: 1; }
+.caption { position: absolute; opacity: 0; transform: translateY(8px); transition: opacity .55s ease, transform .55s var(--ease-wall); }
+.caption.on { opacity: 1; transform: translateY(0); }
 .caption .cap-brand {
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase; margin-bottom: 10px;
@@ -171,6 +191,10 @@ button.frame:disabled { cursor: default; }
   text-transform: uppercase; color: var(--ink-soft); margin-top: 14px;
 }
 .caption .verdict b { color: var(--red); font-weight: 500; }
+.caption .limited {
+  font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: .14em;
+  text-transform: lowercase; color: var(--ink-soft); margin-top: 8px; opacity: .8;
+}
 .caption .actions { margin-top: 18px; display: flex; gap: 22px; justify-content: center; }
 .caption .actions button {
   background: none; border: 0; font: inherit; font-size: 13px; color: var(--ink);
@@ -184,7 +208,7 @@ button.frame:disabled { cursor: default; }
 .caption .actions button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 
 /* ---------- near-miss strip ---------- */
-.strip { position: absolute; display: flex; gap: 14px; }
+.strip { display: flex; gap: 14px; justify-content: center; margin-top: 14px; }
 .strip .mini {
   position: relative; width: 58px; display: block;
   background: none; border: 0; padding: 8px 0; cursor: pointer;
@@ -212,7 +236,7 @@ button.frame:disabled { cursor: default; }
 
 @media (prefers-reduced-motion: reduce) {
   .frame, .frame .moulding, .frame .mat, .frame .accn, .mark, .caption, .wlabel, .vinyl,
-  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img {
+  .reserved .mat, .reserved .choose, .strip .mini, .strip .mini img, .frame.twin .mat img {
     transition-duration: .01s !important; transition-delay: 0s !important;
     animation-duration: .01s !important; animation-delay: 0s !important;
   }

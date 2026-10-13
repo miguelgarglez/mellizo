@@ -6,13 +6,15 @@ import { WALL_ART, type Match } from "./data";
 const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-// CLIP cosine similarity between a photo and an artwork lands around
-// 0.15-0.35; scale that band into a readable resemblance score.
+// Measured on the real corpus: CLIP cosine similarity between a photo and an
+// artwork lands ~0.30 for unrelated pairs and ~0.50-0.55 for eerie ones.
+// Map that band linearly so near misses keep distinguishable scores
+// instead of saturating at the top.
 export function resemblance(sim: number): number {
-  return Math.round(Math.min(97, Math.max(41, 41 + (sim - 0.1) / 0.28 * 56)));
+  return Math.round(Math.min(97, Math.max(41, 41 + (sim - 0.30) / 0.22 * 56)));
 }
 
-export async function findMatches(v: number[], count = 5): Promise<Match[]> {
+export async function findMatches(v: number[], count = 5): Promise<{ list: Match[]; limited: boolean }> {
   if (URL_ && KEY) {
     try {
       const res = await fetch(`${URL_}/rest/v1/rpc/match_artworks`, {
@@ -37,18 +39,21 @@ export async function findMatches(v: number[], count = 5): Promise<Match[]> {
               /^(https?:)?\/\//.test(r.thumb_url || r.image_url))
           : [];
         if (ok.length) {
-          return ok.map(r => ({
-            id: r.id, title: String(r.title ?? ""), artist: String(r.artist ?? ""),
-            date: String(r.date ?? ""),
-            img: r.thumb_url || r.image_url,
-            objectUrl: typeof r.object_url === "string" ? r.object_url : "",
-            w: 4, h: 3, score: resemblance(1 - r.distance),
-          }));
+          return {
+            limited: false,
+            list: ok.map(r => ({
+              id: r.id, title: String(r.title ?? ""), artist: String(r.artist ?? ""),
+              date: String(r.date ?? ""),
+              img: r.thumb_url || r.image_url,
+              objectUrl: typeof r.object_url === "string" ? r.object_url : "",
+              w: 4, h: 3, score: resemblance(1 - r.distance),
+            })),
+          };
         }
       }
     } catch { /* fall through to local corpus */ }
   }
-  return localMatches(v, count);
+  return { limited: true, list: await localMatches(v, count) };
 }
 
 // Degraded path: the works hung on the wall, embedded at build time.
