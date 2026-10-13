@@ -13,7 +13,7 @@ const out = fs.createWriteStream(OUT);
 let skip = 0, kept = 0;
 for (;;) {
   const u = `https://openaccess-api.clevelandart.org/api/artworks/?has_image=1&cc0=1&limit=100&skip=${skip}&fields=${FIELDS}`;
-  const res = await fetch(u);
+  const res = await fetch(u, { signal: AbortSignal.timeout(20000) });
   if (!res.ok) { console.log("HTTP", res.status, "at skip", skip); await new Promise(r => setTimeout(r, 3000)); continue; }
   const o = await res.json();
   if (!o.data.length) break;

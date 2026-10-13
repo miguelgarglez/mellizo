@@ -11,6 +11,7 @@ export default async function handler(_req: Request) {
       "Content-Profile": "mellizo",
     },
     body: JSON.stringify({ query_embedding: `[${"0,".repeat(511)}0]`, match_count: 1 }),
+    signal: AbortSignal.timeout(10000),
   });
-  return new Response(`ok:${res.status}`, { status: 200 });
+  return new Response(`ok:${res.status}`, { status: res.ok ? 200 : 502 });
 }

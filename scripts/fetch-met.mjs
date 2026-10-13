@@ -59,7 +59,7 @@ let done = 0, kept = 0, cursor = 0;
 async function fetchJson(url) {
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
-      const res = await fetch(url, { headers: { "User-Agent": "mellizo-catalog/1.0 (research)" } });
+      const res = await fetch(url, { headers: { "User-Agent": "mellizo-catalog/1.0 (research)" }, signal: AbortSignal.timeout(20000) });
       const ct = res.headers.get("content-type") ?? "";
       if (!res.ok || !ct.includes("json")) {           // Incapsula html or throttle
         await new Promise(r => setTimeout(r, 800 * 2 ** attempt));

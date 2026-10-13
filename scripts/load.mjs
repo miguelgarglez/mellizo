@@ -5,12 +5,14 @@ import readline from "node:readline";
 import path from "node:path";
 
 const envFile = path.join(process.env.HOME, ".config/lab/secrets.env");
-for (const l of fs.readFileSync(envFile, "utf8").split("\n")) {
-  const m = l.match(/^([A-Z_]+)=(.*)$/);
-  if (m) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
-}
-const URL_ = process.env.SUPABASE_LAB_URL, KEY = process.env.SUPABASE_LAB_SERVICE_KEY;
-if (!URL_ || !KEY) { console.error("missing supabase env"); process.exit(1); }
+if (fs.existsSync(envFile))
+  for (const l of fs.readFileSync(envFile, "utf8").split("\n")) {
+    const m = l.match(/^([A-Z_]+)=(.*)$/);
+    if (m) process.env[m[1]] ??= m[2].replace(/^['"]|['"]$/g, "");
+  }
+const URL_ = process.env.SUPABASE_LAB_URL || process.env.SUPABASE_URL;
+const KEY = process.env.SUPABASE_LAB_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!URL_ || !KEY) { console.error("missing supabase env (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)"); process.exit(1); }
 
 const dir = f => new URL(`../data/${f}`, import.meta.url).pathname;
 const norm = (id, src) => String(id).includes("-") ? String(id) : `${src}-${id}`;

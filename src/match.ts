@@ -1,6 +1,6 @@
 // Nearest-neighbour lookup against the prebuilt corpus in Supabase (pgvector),
 // with a bundled mini-corpus as the degraded path so the wall always answers.
-import { cosine } from "./clip";
+import { cosine } from "./cosine";
 import { WALL_ART, type Match } from "./data";
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -28,11 +28,20 @@ export async function findMatches(v: number[], count = 5): Promise<Match[]> {
         signal: AbortSignal.timeout(12000),
       });
       if (res.ok) {
-        const rows = await res.json();
-        if (rows.length) {
-          return rows.map((r: any) => ({
-            id: r.id, title: r.title, artist: r.artist, date: r.date,
-            img: r.thumb_url || r.image_url, objectUrl: r.object_url,
+        const rows = (await res.json()) as any[];
+        const ok = Array.isArray(rows)
+          ? rows.filter(r =>
+              typeof r.id === "string" &&
+              Number.isFinite(r.distance) &&
+              typeof (r.thumb_url || r.image_url) === "string" &&
+              /^(https?:)?\/\//.test(r.thumb_url || r.image_url))
+          : [];
+        if (ok.length) {
+          return ok.map(r => ({
+            id: r.id, title: String(r.title ?? ""), artist: String(r.artist ?? ""),
+            date: String(r.date ?? ""),
+            img: r.thumb_url || r.image_url,
+            objectUrl: typeof r.object_url === "string" ? r.object_url : "",
             w: 4, h: 3, score: resemblance(1 - r.distance),
           }));
         }
@@ -47,9 +56,9 @@ let miniCache: { id: string; v: number[] }[] | null = null;
 async function localMatches(v: number[], count: number): Promise<Match[]> {
   if (!miniCache) {
     try {
-      const res = await fetch("/corpus-mini.json");
-      miniCache = res.ok ? await res.json() : [];
-    } catch { miniCache = []; }
+      const res = await fetch("/corpus-mini.json", { signal: AbortSignal.timeout(8000) });
+      if (res.ok) miniCache = await res.json(); // cache only a good fetch — a failed one may retry
+    } catch { /* leave miniCache null so the next photo retries */ }
   }
   return (miniCache ?? [])
     .map(r => ({ r, s: cosine(v, r.v) }))

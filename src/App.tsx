@@ -38,40 +38,59 @@ export default function App() {
   const [matchAr, setMatchAr] = useState(4 / 3);
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
+  const jobRef = useRef(0);
+  const photoRef = useRef<Photo | null>(null);
 
   const result = phase === "result";
   const openPicker = () => inputRef.current?.click();
 
+  // release the object URL on unmount too
+  useEffect(() => () => { if (photoRef.current) URL.revokeObjectURL(photoRef.current.url); }, []);
+
+  const setPhotoTracked = (p: Photo | null) => {
+    if (photoRef.current && photoRef.current !== p) URL.revokeObjectURL(photoRef.current.url);
+    photoRef.current = p;
+    setPhoto(p);
+  };
+
   const handleFile = useCallback(async (f: File | undefined | null) => {
     if (!f || !f.type.startsWith("image/") || busyRef.current) return;
     busyRef.current = true;
+    const job = ++jobRef.current;
     setShowRunners(false);
     setModelPct(0);
+    let url: string | null = null;
     try {
       setPhase("busy");
       setStatus(STATUS.reading);
-      const url = URL.createObjectURL(f);
+      url = URL.createObjectURL(f);
       const img = new Image();
       img.src = url;
       await img.decode();
-      setPhoto({ url, w: img.naturalWidth, h: img.naturalHeight });
+      if (job !== jobRef.current) return;
+      setPhotoTracked({ url, w: img.naturalWidth, h: img.naturalHeight });
+      url = null;
 
       setStatus(STATUS.embedding);
       const { warmup, embedImage } = await import("./clip");
       warmup(setModelPct);
       const v = await embedImage(img);
+      if (job !== jobRef.current) return;
 
       setStatus(STATUS.searching);
       const matches = await findMatches(v, 5);
+      if (job !== jobRef.current) return;
       if (!matches.length) throw new Error("empty");
       setMatch(matches[0]);
       setRunners(matches.slice(1));
       setPhase("result");
       haptics.trigger("success");
     } catch {
+      if (job !== jobRef.current) return;
       setPhase("error");
       setStatus("The wall couldn't read that photograph. Try another image.");
     } finally {
+      if (url) URL.revokeObjectURL(url);
       busyRef.current = false;
     }
   }, []);
@@ -87,7 +106,8 @@ export default function App() {
   }, [handleFile]);
 
   const reset = useCallback(() => {
-    setPhoto(p => { if (p) URL.revokeObjectURL(p.url); return null; });
+    jobRef.current++;
+    setPhotoTracked(null);
     setMatch(null); setRunners([]); setShowRunners(false);
     setPhase("idle"); setStatus(""); setModelPct(0);
   }, []);
@@ -98,7 +118,9 @@ export default function App() {
   const ph = Math.min(ph0, mobile ? 200 : 330);
   const pwEff = ph < ph0 ? ph * (photo ? photo.w / photo.h : 4 / 3) : pw;
   const aw = mobile ? 140 : 210;
-  const ah = aw * matchAr;
+  const ah0 = aw * matchAr;
+  const ah = Math.min(ah0, mobile ? 280 : 420);
+  const awEff = ah < ah0 ? ah / matchAr : aw;
   const seamY = mobile ? 210 : 340;
   const pTop = seamY - ph / 2 - 5;
   const aTop = seamY - ah / 2 - 5;
@@ -172,7 +194,7 @@ export default function App() {
         {/* the twin slides in from off-view */}
         <div
           className={`frame twin${result ? "" : " gone"}`}
-          style={{ left: result ? ax : 1700, top: result ? aTop : 220, width: aw, height: ah + 10 }}
+          style={{ left: result ? ax + (aw - awEff) / 2 : 1700, top: result ? aTop : 220, width: awEff, height: ah + 10 }}
           aria-hidden={!result}
         >
           <div className="moulding">
@@ -200,7 +222,7 @@ export default function App() {
           left: capLeft, top: capTop,
           width: mobile ? 300 : 370, textAlign: "center",
         }}>
-          {match && (
+          {result && match && (
             <>
               <div className="title">{match.title}</div>
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
@@ -235,21 +257,17 @@ export default function App() {
           <h1 style={mobile ? { fontSize: 30, marginTop: 10 } : { fontSize: 40 }}>
             {phase === "error" ? "That one slipped off the wall." : <>Find your photograph's <em>twin</em>.</>}
           </h1>
-          {phase === "busy" ? (
-            <p className="sub status" style={mobile ? { fontSize: 12.5, marginTop: 10 } : undefined}>
-              {status}{modelPct > 0 && modelPct < 1 ? ` ${Math.round(modelPct * 100)}%` : ""}
-            </p>
-          ) : phase === "error" ? (
-            <p className="sub" style={mobile ? { fontSize: 12.5, marginTop: 10 } : undefined}>{status}</p>
-          ) : (
-            <p className="sub" style={mobile ? { fontSize: 12.5, maxWidth: 300, marginTop: 10 } : undefined}>
-              {mobile
-                ? "The collection finds its match on this device. Nothing is uploaded."
-                : "Drop any photo onto the wall. Fifty thousand works answer, and nothing ever leaves your device."}
-            </p>
-          )}
+          <p className={`sub${phase === "busy" ? " status" : ""}`} aria-live="polite" style={mobile ? { fontSize: 12.5, maxWidth: 300, marginTop: 10 } : undefined}>
+            {phase === "busy"
+              ? `${status}${modelPct > 0 && modelPct < 1 ? ` ${Math.round(modelPct * 100)}%` : ""}`
+              : phase === "error"
+                ? status
+                : mobile
+                  ? "The collection finds its match on this device. Your photo is never uploaded."
+                  : "Drop any photo onto the wall. Eighteen thousand open artworks answer, and the photo itself never leaves your device."}
+          </p>
           {phase === "error" && (
-            <p className={`act${mobile ? " tap" : ""}`}><u onClick={openPicker}>try again</u></p>
+            <p className={`act${mobile ? " tap" : ""}`}><button className="retry" onClick={openPicker}>try again</button></p>
           )}
         </div>
 

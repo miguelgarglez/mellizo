@@ -35,7 +35,7 @@ body {
   transform-origin: center;
   transform: translate(-50%, -50%) scale(var(--scale, 1));
 }
-@media (max-width: 700px) { .stage { width: 375px; height: 720px; } }
+@media (max-width: 699px) { .stage { width: 375px; height: 720px; } }
 
 /* ---------- frame ---------- */
 .frame {
@@ -100,9 +100,14 @@ button.frame:disabled { cursor: default; }
 .vinyl .sub { margin-top: 16px; font-size: 14px; line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
 .vinyl .sub.status { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .06em; }
 .vinyl .act { margin-top: 20px; font-size: 13.5px; color: var(--ink); }
-.vinyl .act u { text-decoration: none; border-bottom: 1px solid var(--ink); padding-bottom: 2px; cursor: pointer; }
-.vinyl .act.tap u { display: inline-block; padding: 13px 6px 13px 0; margin: -4px 0; }
-.vinyl .act u:hover { border-bottom-color: var(--red); color: var(--red); }
+.vinyl .act .retry {
+  appearance: none; background: none; border: 0; padding: 0 0 2px;
+  font: inherit; color: inherit; cursor: pointer;
+  border-bottom: 1px solid var(--ink);
+}
+.vinyl .act.tap .retry { display: inline-block; padding: 13px 6px 13px 0; margin: -4px 0; }
+.vinyl .act .retry:hover { border-bottom-color: var(--red); color: var(--red); }
+.vinyl .act .retry:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .vinyl .brandline {
   font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
   color: var(--ink-soft); text-transform: lowercase;

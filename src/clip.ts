@@ -9,17 +9,17 @@ let procP: Promise<any> | null = null;
 let modelP: Promise<any> | null = null;
 
 export function warmup(onProgress?: (p: number) => void) {
-  procP ??= AutoProcessor.from_pretrained(MODEL_ID);
+  procP ??= AutoProcessor.from_pretrained(MODEL_ID).catch(e => { procP = null; throw e; });
   modelP ??= CLIPVisionModelWithProjection.from_pretrained(MODEL_ID, {
     dtype: "q8",
     progress_callback: (d: any) => {
       if (d?.status === "progress" && d.total) onProgress?.(d.loaded / d.total);
     },
-  });
+  }).catch(e => { modelP = null; throw e; });
 }
 
 export async function embedImage(img: HTMLImageElement): Promise<number[]> {
-  await warmup();
+  warmup();
   const [proc, model] = await Promise.all([procP!, modelP!]);
   const raw = await RawImage.fromCanvas(drawToCanvas(img));
   const inputs = await proc(raw);
@@ -29,16 +29,14 @@ export async function embedImage(img: HTMLImageElement): Promise<number[]> {
   return v.map(x => x / norm);
 }
 
+// CLIP downsamples to 224px anyway; cap the canvas well below full resolution
+// so a 100MP phone photo can't blow up memory before preprocessing.
+const MAX_SIDE = 768;
 function drawToCanvas(img: HTMLImageElement): HTMLCanvasElement {
+  const k = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement("canvas");
-  c.width = img.naturalWidth;
-  c.height = img.naturalHeight;
-  c.getContext("2d")!.drawImage(img, 0, 0);
+  c.width = Math.max(1, Math.round(img.naturalWidth * k));
+  c.height = Math.max(1, Math.round(img.naturalHeight * k));
+  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
   return c;
-}
-
-export function cosine(a: number[], b: number[]): number {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
-  return s;
 }
