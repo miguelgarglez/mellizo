@@ -90,8 +90,13 @@ button.frame:disabled { cursor: default; }
   position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
   display: inline-block; white-space: nowrap;
   background: var(--label); border: 1px solid var(--hairline);
-  color: var(--ink); font-size: 13px; padding: 14px 20px; min-height: 48px;
+  color: var(--ink); font-size: 13px; padding: 10px 20px; min-height: 48px;
   transition: border-color .2s, transform .12s ease;
+}
+.reserved .choose b { display: block; font-weight: 500; }
+.reserved .choose i {
+  display: block; font-style: normal; font-size: 10.5px;
+  color: var(--ink-soft); margin-top: 3px;
 }
 .reserved:focus-visible { outline: 2px solid var(--red); outline-offset: 6px; }
 @media (hover: hover) {
@@ -204,8 +209,8 @@ button.frame:disabled { cursor: default; }
 }
 .caption .verdict b { color: var(--red); font-weight: 500; }
 .caption .limited {
-  font-family: "IBM Plex Mono", monospace; font-size: 9.5px; letter-spacing: .14em;
-  text-transform: lowercase; color: var(--ink-soft); margin-top: 8px; opacity: .8;
+  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .06em;
+  text-transform: lowercase; color: var(--ink-soft); margin-top: 8px;
 }
 .caption .actions { margin-top: 18px; display: flex; gap: 22px; justify-content: center; }
 .caption .actions button {
@@ -220,7 +225,17 @@ button.frame:disabled { cursor: default; }
 .caption .actions button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 
 /* ---------- near-miss strip ---------- */
-.strip { display: flex; gap: 14px; justify-content: center; margin-top: 14px; }
+.strip { margin-top: 16px; }
+.strip .striplabel {
+  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .1em;
+  color: var(--ink-soft); margin-bottom: 10px;
+}
+.strip .minis { display: flex; gap: 14px; justify-content: center; }
+.cap-fixed {
+  position: absolute; left: 20px; top: 24px;
+  font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .18em;
+  color: var(--ink-soft); text-transform: lowercase;
+}
 .strip .mini {
   position: relative; width: 58px; display: block;
   background: none; border: 0; padding: 8px 0; cursor: pointer;

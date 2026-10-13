@@ -11,8 +11,8 @@ const haptics = new WebHaptics();
 
 const STATUS = {
   reading: "Reading your photograph…",
-  warming: "Warming the eyes · a one-time download",
-  preparing: "Preparing the model…",
+  warming: "Fetching the eyes · a one-time download",
+  preparing: "Starting the eyes…",
   embedding: "Studying its features…",
   searching: "Walking the galleries…",
 };
@@ -37,6 +37,8 @@ export default function App() {
   const [showRunners, setShowRunners] = useState(false);
   const [drag, setDrag] = useState(false);
   const [modelPct, setModelPct] = useState(0);
+  const [dlDone, setDlDone] = useState(false);
+  const [winnerId, setWinnerId] = useState<string | null>(null);
   const [matchAr, setMatchAr] = useState(4 / 3);
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
@@ -66,6 +68,8 @@ export default function App() {
     stageRef.current = "read";
     setShowRunners(false);
     setModelPct(0);
+    setDlDone(false);
+    setWinnerId(null);
     let url: string | null = null;
     try {
       setPhase("busy");
@@ -81,7 +85,7 @@ export default function App() {
       const { warmup, ready, embedImage } = await import("./clip");
       stageRef.current = "model";
       if (!clipReady.current) setStatus(STATUS.warming);
-      warmup(setModelPct);
+      warmup(p => { if (p >= 1) setDlDone(true); setModelPct(p); });
       await ready();
       clipReady.current = true;
       if (job !== jobRef.current) return;
@@ -108,7 +112,15 @@ export default function App() {
       if (job !== jobRef.current) return;
       setMatchAr(ar);
       setMatch(matches[0]);
-      setRunners(matches.slice(1));
+      setWinnerId(matches[0].id);
+      // skip near-duplicates so the strip reads as real alternatives
+      const seen = new Set([matches[0].title.toLowerCase().trim()]);
+      setRunners(matches.slice(1).filter(m => {
+        const k = m.title.toLowerCase().trim();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      }));
       setLimited(limited);
       setPhase("result");
       // warm the near-miss thumbs so the strip opens with paint, not black
@@ -190,7 +202,8 @@ export default function App() {
   const px = mobile ? 12 : 355;
   const ax = mobile ? 200 : 720;
   const pairCx = (px + ax + awEff) / 2;
-  const capTop = Math.max(pTop + ph, aTop + ah) + (mobile ? 30 : 52);
+  const pairBottom = Math.max(pTop + ph, aTop + ah);
+  const capTop = pairBottom + (mobile ? 30 : 52);
   const capLeft = mobile
     ? Math.min(Math.max(pairCx - 150, 10), 375 - 310)
     : pairCx - 185;
@@ -261,8 +274,11 @@ export default function App() {
               {photo && <img src={photo.url} alt="Your photograph" />}
             </div>
           </div>
-          {!photo && !result && <span className="choose">Choose a photo</span>}
-          <span className={result ? "accn" : "reslabel"}>
+          {!photo && !result && (mobile
+            ? <span className="choose">Choose a photo</span>
+            : <span className="choose"><b>Drop a photo</b><i>or click to choose</i></span>)}
+          <span className={result ? "accn" : "reslabel"}
+            style={result ? { top: pairBottom - pTop + 8 } : undefined}>
             {result ? "your photograph" : photo ? "your photograph" : "reserved · your photograph"}
           </span>
         </button>
@@ -282,15 +298,18 @@ export default function App() {
             </div>
           </div>
           {match?.objectUrl
-            ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}>{match.id.replace("met-", "met #").replace("cle-", "cle #")}</a>
-            : <span className="accn">{match?.id}</span>}
+            ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}
+                style={result ? { top: pairBottom - aTop + 8 } : undefined}>{match.id.replace("met-", "met #").replace("cle-", "cle #")}</a>
+            : <span className="accn" style={result ? { top: pairBottom - aTop + 8 } : undefined}>{match?.id}</span>}
         </div>
 
         {/* resemblance mark */}
-        <div className={`mark${result ? " on" : ""}`} style={{
-          left: px + pwEff + (ax - px - pwEff) / 2 - 15.5,
-          top: seamY - 15.5,
-        }}>{match?.score ?? 0}</div>
+        <div className={`mark${result ? " on" : ""}`}
+          title="resemblance — how close it sits to your photo, relative to the works searched"
+          style={{
+            left: px + pwEff + (ax - px - pwEff) / 2 - 15.5,
+            top: seamY - 15.5,
+          }}>{match?.score ?? 0}</div>
 
         {/* caption on the wall */}
         <div className={`caption${result ? " on" : ""}`} style={{
@@ -299,10 +318,9 @@ export default function App() {
         }}>
           {result && match && (
             <>
-              {mobile && <div className="cap-brand">mellizo · a museum of resemblances</div>}
               <div className="title">{match.title}</div>
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
-              <div className="verdict">resemblance <b>{match.score}</b> · its nearest neighbor</div>
+              <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId ? "its nearest neighbor" : "another resemblance"}</div>
               {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}
               <div className="actions">
                 <button onClick={reset}>hang another</button>
@@ -314,6 +332,8 @@ export default function App() {
               </div>
               {showRunners && (
                 <div className="strip">
+                  <div className="striplabel">hang a near miss instead</div>
+                  <div className="minis">
                   {runners.slice(0, mobile ? 3 : 4).map(r => (
                     <button key={r.id} className="mini" onClick={() => swapRunner(r)} aria-label={`Hang ${r.title} instead`}>
                       <img src={r.img} alt={r.title}
@@ -322,6 +342,7 @@ export default function App() {
                       <span>{r.score}</span>
                     </button>
                   ))}
+                  </div>
                 </div>
               )}
             </>
@@ -338,7 +359,7 @@ export default function App() {
           </h1>
           <p className={`sub${phase === "busy" ? " status" : ""}`} aria-live="polite" style={mobile ? { fontSize: 12.5, maxWidth: 300, marginTop: 10 } : undefined}>
             {phase === "busy"
-              ? status === STATUS.warming && modelPct >= 1
+              ? status === STATUS.warming && dlDone
                 ? STATUS.preparing
                 : `${status}${modelPct > 0 && modelPct < 1 ? ` ${Math.round(modelPct * 100)}%` : ""}`
               : phase === "error"
@@ -365,11 +386,13 @@ export default function App() {
             onClick={useSample}><img className="sample-thumb" src="/sample.jpg" alt="" />or hang one of ours</button>
         )}
 
-        {!mobile && (
+        {!mobile ? (
           <div className="wlabel" style={result ? { left: 62, top: 742 } : { left: 210, top: 740 }}>
             <div className="t">mellizo</div>
             <div className="s">a museum of resemblances</div>
           </div>
+        ) : result && (
+          <div className="cap-brand cap-fixed">mellizo · a museum of resemblances</div>
         )}
       </div>
       <input
