@@ -1,7 +1,7 @@
 // Measure display-image dimensions for every catalog row.
-// Cleveland dims come from the openaccess API (already measured into
-// _lab/runs/mellizo-degenerate-cle.json); everything else is probed with a
-// range GET of the first 256KB and a JPEG/PNG header parse.
+// Cleveland dims may come from a cached openaccess API pull
+// (_lab/runs/mellizo-degenerate-cle.json, optional); everything else is
+// probed with a range GET of the first 256KB and a JPEG/PNG header parse.
 // Output: data/dims.jsonl {id, w, h} — resumable.
 import fs from "node:fs";
 import readline from "node:readline";
@@ -12,8 +12,12 @@ const OUT = dir("dims.jsonl");
 const RANGE = "bytes=0-262143";
 const CONCURRENCY = 10;
 
-const cleDims = JSON.parse(fs.readFileSync(
-  path.join(process.env.HOME, "Developer/_lab/runs/mellizo-degenerate-cle.json"), "utf8")).dims;
+// optional cache — without it the probe covers Cleveland too
+const cleDimsFile = path.join(process.env.HOME,
+  "Developer/_lab/runs/mellizo-degenerate-cle.json");
+const cleDims = fs.existsSync(cleDimsFile)
+  ? JSON.parse(fs.readFileSync(cleDimsFile, "utf8")).dims
+  : {};
 
 const have = new Map();
 if (fs.existsSync(OUT))

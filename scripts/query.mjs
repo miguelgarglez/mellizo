@@ -28,11 +28,11 @@ const res = await fetch(`${URL_}/rest/v1/rpc/match_artworks`, {
 });
 if (!res.ok) { console.error(res.status, await res.text()); process.exit(1); }
 const rows = await res.json();
-const deg = JSON.parse(fs.readFileSync(path.join(process.env.HOME, "Developer/_lab/runs/mellizo-degenerate-cle.json"), "utf8"));
-const degSet = new Set([...deg.extreme, ...deg.tiny].map(id => `cle-${id}`));
-const map = s => Math.round(Math.min(97, Math.max(41, 41 + (s - 0.30) / 0.22 * 56)));
-console.log("id                sim      score  flagged  title");
+// the shipped mapping from src/match.ts — keep in sync
+const map = s => Math.round(Math.min(97, Math.max(41, 41 + (s - 0.42) / 0.53 * 56)));
+console.log("id                sim      score  dims       title");
 for (const r of rows) {
   const s = 1 - r.distance;
-  console.log(`${r.id.padEnd(16)} ${s.toFixed(4)}  ${String(map(s)).padStart(3)}    ${degSet.has(r.id) ? "DEGEN" : "     "}  ${(r.title || "").slice(0, 55)}`);
+  const dims = Number.isFinite(r.img_w) ? `${r.img_w}x${r.img_h}` : "unmeasured";
+  console.log(`${r.id.padEnd(16)} ${s.toFixed(4)}  ${String(map(s)).padStart(3)}    ${dims.padEnd(10)} ${(r.title || "").slice(0, 55)}`);
 }

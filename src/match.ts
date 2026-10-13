@@ -57,8 +57,9 @@ export async function findMatches(v: number[], count = 5): Promise<{ list: Match
               date: String(r.date ?? ""),
               img: r.thumb_url || r.image_url,
               objectUrl: typeof r.object_url === "string" ? r.object_url : "",
-              w: Number.isFinite(r.img_w) ? r.img_w : 4,
-              h: Number.isFinite(r.img_h) ? r.img_h : 3,
+              // 0 marks unmeasured: the app falls back to decoding the image
+              w: Number.isFinite(r.img_w) ? r.img_w : 0,
+              h: Number.isFinite(r.img_h) ? r.img_h : 0,
               score: resemblance(1 - r.distance),
             })),
           };

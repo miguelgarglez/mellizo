@@ -5,7 +5,8 @@ import { chromium, firefox, webkit } from "playwright";
 
 const [url, photo, engine = "chromium", out = "shot", ...rest] = process.argv.slice(2);
 const mobile = rest.includes("--mobile");
-const waitMs = parseInt(rest[rest.indexOf("--wait") + 1] || "2500", 10);
+const waitAt = rest.indexOf("--wait");
+const waitMs = waitAt >= 0 ? parseInt(rest[waitAt + 1] || "2500", 10) : 2500;
 const browserType = { chromium, firefox, webkit }[engine];
 if (!browserType) { console.error("bad engine", engine); process.exit(1); }
 

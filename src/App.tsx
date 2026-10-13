@@ -50,7 +50,8 @@ export default function App() {
   const stageRef = useRef<"read" | "model" | "embed" | "search">("read");
   const [limited, setLimited] = useState(false);
   const [swappedAt, setSwappedAt] = useState(0);
-  const [imgFailed, setImgFailed] = useState(false);
+  // the image URL that failed to paint — a broken twin never poisons the next
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const swapRef = useRef(0);
 
   const result = phase === "result";
@@ -74,7 +75,7 @@ export default function App() {
     setModelPct(0);
     setDlDone(false);
     setWinnerId(null);
-    setImgFailed(false);
+    setFailedSrc(null);
     let url: string | null = null;
     try {
       setPhase("busy");
@@ -113,7 +114,7 @@ export default function App() {
       const probe = new Promise<number>((resolve) => {
         const t = new Image();
         t.onload = () => resolve(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
-        t.onerror = () => { if (job === jobRef.current) setImgFailed(true); resolve(4 / 3); };
+        t.onerror = () => { if (job === jobRef.current) setFailedSrc(matches[0].img); resolve(4 / 3); };
         t.src = matches[0].img;
       });
       const ar = matches[0].w && matches[0].h
@@ -189,7 +190,7 @@ export default function App() {
     t.onload = () => {
       if (n !== swapRef.current) return;
       setMatchAr(r.w && r.h ? r.h / r.w : (t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3));
-      setImgFailed(false);
+      setFailedSrc(null);
       setMatch(prev => {
         if (!prev) return r;
         // stable order: the demoted winner joins the end, others stay put
@@ -321,9 +322,9 @@ export default function App() {
         >
           <div className="moulding">
             <div className="mat">
-              {match && (imgFailed
+              {match && (failedSrc === match.img
                 ? <div className="broken"><span>the work stayed in storage</span></div>
-                : <img key={match.id} src={match.img} alt={match.title} onError={() => setImgFailed(true)} />)}
+                : <img key={match.id} src={match.img} alt={match.title} onError={() => setFailedSrc(match.img)} />)}
             </div>
             {swappedAt > 0 && <div className="flashring" key={swappedAt} />}
           </div>
