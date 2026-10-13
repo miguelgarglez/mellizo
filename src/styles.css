@@ -68,7 +68,7 @@ body {
 .frame .accn {
   position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
   font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .04em;
-  color: #5f584a; white-space: nowrap; opacity: 0; transition: opacity .25s;
+  color: #544e3f; white-space: nowrap; opacity: 0; transition: opacity .25s;
 }
 .frame.pair .accn, .frame.twin .accn { opacity: 1; }
 @media (hover: hover) { .frame:hover .accn { opacity: 1; } }
@@ -120,7 +120,7 @@ button.frame:disabled { cursor: default; }
 
 /* ---------- vinyl ---------- */
 .vinyl { position: absolute; transition: opacity .45s ease; }
-.vinyl.off { opacity: 0; pointer-events: none; }
+.vinyl.off { opacity: 0; pointer-events: none; transition-duration: .25s; }
 .vinyl h1 { font-family: "Fraunces", serif; font-weight: 400; font-size: 44px; line-height: 1.04; letter-spacing: -0.015em; color: var(--ink); }
 .vinyl h1 em { font-style: italic; font-weight: 300; }
 .vinyl .sub { margin-top: 16px; font-size: 14px; line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
@@ -180,9 +180,18 @@ button.frame:disabled { cursor: default; }
 .phase-result .mark { transition-delay: 1.15s; }
 .phase-result .caption { transition-delay: 1.3s; }
 .phase-busy .frame.twin, .phase-busy .mark, .phase-busy .caption { transition-delay: 0s; }
-/* a swapped candidate arrives through a soft focus pull */
+/* a swapped candidate arrives through a soft focus pull + a brief ring pulse */
 .frame.twin .mat img { animation: twinIn .5s ease; }
 @keyframes twinIn { from { opacity: 0; filter: saturate(.5) blur(2px); } }
+.frame.twin .flashring {
+  position: absolute; inset: -4px; pointer-events: none;
+  box-shadow: 0 0 0 2px var(--red);
+  animation: ringOut .9s ease forwards;
+}
+@keyframes ringOut { from { opacity: 1; } to { opacity: 0; } }
+/* opening the picker dims the room further so the strip reads as a tool */
+.strip-open .frame:not(.reserved):not(.twin):not(.gone) { opacity: .32; }
+.strip-open .frame:not(.reserved):not(.twin):not(.gone) img { filter: saturate(.3) brightness(1.14); opacity: .55; }
 
 /* ---------- resemblance mark ---------- */
 .mark {

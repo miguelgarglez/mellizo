@@ -49,6 +49,7 @@ export default function App() {
   const clipReady = useRef(false);
   const stageRef = useRef<"read" | "model" | "embed" | "search">("read");
   const [limited, setLimited] = useState(false);
+  const [swappedAt, setSwappedAt] = useState(0);
   const swapRef = useRef(0);
 
   const result = phase === "result";
@@ -185,6 +186,7 @@ export default function App() {
         setRunners(rs => [prev, ...rs.filter(x => x.id !== r.id && x.id !== prev.id)]);
         return r;
       });
+      setSwappedAt(Date.now());
       haptics.trigger("light");
     };
     t.src = r.img;
@@ -206,7 +208,8 @@ export default function App() {
   const ax = mobile ? 200 : 720;
   const pairCx = (px + ax + awEff) / 2;
   const pairBottom = Math.max(pTop + ph, aTop + ah);
-  const capTop = pairBottom + (mobile ? 30 : 52);
+  // caption anchors to a fixed slot so swapping artworks never moves the controls
+  const capTop = Math.max(pairBottom, seamY + (mobile ? 112 : 170)) + (mobile ? 30 : 44);
   const capLeft = mobile
     ? Math.min(Math.max(pairCx - 150, 10), 375 - 310)
     : pairCx - 185;
@@ -237,7 +240,7 @@ export default function App() {
 
   return (
     <div
-      className={`room${drag ? " drag" : ""} phase-${phase}`}
+      className={`room${drag ? " drag" : ""} phase-${phase}${showRunners && result ? " strip-open" : ""}`}
       onDragOver={e => { e.preventDefault(); setDrag(true); }}
       onDragLeave={() => setDrag(false)}
       onDrop={e => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files?.[0]); }}
@@ -299,6 +302,7 @@ export default function App() {
             <div className="mat">
               {match && <img key={match.id} src={match.img} alt={match.title} />}
             </div>
+            {swappedAt > 0 && <div className="flashring" key={swappedAt} />}
           </div>
           {match?.objectUrl
             ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}
