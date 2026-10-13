@@ -9,6 +9,11 @@ const SOURCES = ["catalog-met.jsonl", "catalog-cle.jsonl"].map(
   f => new URL(`../data/${f}`, import.meta.url).pathname);
 const BATCH = 8;
 
+// a work whose image is a sliver embeds as a smear that wins matches it
+// should not: never write an embedding for it (load.mjs then skips the row)
+const degenerate = (w, h) =>
+  Math.min(w, h) < 128 || Math.max(w / h, h / w) > 4;
+
 const done = new Set();
 if (fs.existsSync(OUT))
   for (const l of fs.readFileSync(OUT, "utf8").split("\n"))
@@ -31,7 +36,7 @@ const model = await CLIPVisionModelWithProjection.from_pretrained("Xenova/clip-v
 console.log("model ready");
 
 const out = fs.createWriteStream(OUT, { flags: "a" });
-let cursor = 0, failed = 0, written = 0;
+let cursor = 0, failed = 0, written = 0, skipped = 0;
 const t0 = Date.now();
 
 async function dl(r) {
@@ -58,7 +63,8 @@ while (cursor < rows.length || pool.size) {
     const [id, p] = pool.entries().next().value;
     pool.delete(id);
     const item = await p;
-    if (item) batch.push(item); else failed++;
+    if (item && degenerate(item.img.width, item.img.height)) skipped++;
+    else if (item) batch.push(item); else failed++;
   }
   if (!batch.length) continue;
   try {
@@ -68,11 +74,11 @@ while (cursor < rows.length || pool.size) {
     for (let i = 0; i < batch.length; i++) {
       const v = Array.from(E.slice(i * D, (i + 1) * D));
       const n = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
-      out.write(JSON.stringify({ id: batch[i].r.id, v: v.map(x => +(x / n).toFixed(6)) }) + "\n");
+      out.write(JSON.stringify({ id: batch[i].r.id, w: batch[i].img.width, h: batch[i].img.height, v: v.map(x => +(x / n).toFixed(6)) }) + "\n");
     }
     written += batch.length;
   } catch { failed += batch.length; }
   if (written % 500 < BATCH) console.log(`${written} embedded, ${failed} failed, ${((Date.now()-t0)/written/1000).toFixed(2)}s/img`);
 }
 await new Promise(r => out.end(r));
-console.log(`done: ${written} embedded, ${failed} failed`);
+console.log(`done: ${written} embedded, ${skipped} degenerate skipped, ${failed} failed`);

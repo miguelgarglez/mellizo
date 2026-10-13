@@ -25,13 +25,30 @@ for (const [f, src] of [["catalog-met.jsonl", "met"], ["catalog-cle.jsonl", "cle
 const emb = new Map();
 {
   const rl = readline.createInterface({ input: fs.createReadStream(dir("embeddings.jsonl")), crlfDelay: Infinity });
-  for await (const l of rl) if (l.trim()) { const r = JSON.parse(l); emb.set(norm(r.id, "met"), r.v); }
+  for await (const l of rl) if (l.trim()) { const r = JSON.parse(l); emb.set(norm(r.id, "met"), r); }
 }
+
+// measured display dims (scripts/measure-dims.mjs) — covers embeddings rows
+// written before embed.mjs started recording w/h itself
+const dims = new Map();
+if (fs.existsSync(dir("dims.jsonl"))) {
+  const rl = readline.createInterface({ input: fs.createReadStream(dir("dims.jsonl")), crlfDelay: Infinity });
+  for await (const l of rl) if (l.trim()) { const r = JSON.parse(l); dims.set(r.id, r); }
+}
+
+// degenerate display images never reach the table (embed.mjs already skips
+// them; this guards a stale embeddings file too)
+const degenerate = (w, h) =>
+  Number.isFinite(w) && Number.isFinite(h) &&
+  (Math.min(w, h) < 128 || Math.max(w / h, h / w) > 4);
 
 const rows = [];
 for (const [id, m] of meta) {
-  const v = emb.get(id);
-  if (!v) continue;
+  const e = emb.get(id);
+  if (!e) continue;
+  const w = e.w ?? dims.get(id)?.w ?? m.w ?? null;
+  const h = e.h ?? dims.get(id)?.h ?? m.h ?? null;
+  if (degenerate(w, h)) continue;
   rows.push({
     id,
     source: id.split("-")[0],
@@ -39,7 +56,8 @@ for (const [id, m] of meta) {
     date: m.date.slice(0, 80), medium: m.medium.slice(0, 300),
     department: m.department.slice(0, 120),
     image_url: m.image_url, thumb_url: m.thumb_url, object_url: m.object_url,
-    embedding: `[${v.join(",")}]`,
+    img_w: w, img_h: h,
+    embedding: `[${e.v.join(",")}]`,
   });
 }
 console.log(`${rows.length} rows to upsert`);

@@ -29,6 +29,8 @@ for (;;) {
       department: a.department || "",
       image_url: img,
       thumb_url: img,
+      w: a.images?.web?.width ?? null,
+      h: a.images?.web?.height ?? null,
       object_url: a.url || `https://www.clevelandart.org/art/${a.accession_number ?? a.id}`,
     }) + "\n");
     kept++;

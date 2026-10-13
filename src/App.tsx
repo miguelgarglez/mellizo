@@ -50,6 +50,7 @@ export default function App() {
   const stageRef = useRef<"read" | "model" | "embed" | "search">("read");
   const [limited, setLimited] = useState(false);
   const [swappedAt, setSwappedAt] = useState(0);
+  const [imgFailed, setImgFailed] = useState(false);
   const swapRef = useRef(0);
 
   const result = phase === "result";
@@ -73,6 +74,7 @@ export default function App() {
     setModelPct(0);
     setDlDone(false);
     setWinnerId(null);
+    setImgFailed(false);
     let url: string | null = null;
     try {
       setPhase("busy");
@@ -104,14 +106,20 @@ export default function App() {
       if (job !== jobRef.current) return;
       if (!matches.length) throw new Error("empty");
 
-      // decode the twin and resolve its proportions before the wall moves —
-      // the rehang lands on final geometry, not a guess that shifts mid-flight
-      const ar = await new Promise<number>((resolve) => {
+      // resolve the twin's proportions before the wall moves — the rehang
+      // lands on final geometry, not a guess that shifts mid-flight. The
+      // corpus sends real image dims; the decode only warms the paint and
+      // covers rows with unmeasured dims.
+      const probe = new Promise<number>((resolve) => {
         const t = new Image();
         t.onload = () => resolve(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
-        t.onerror = () => resolve(4 / 3);
+        t.onerror = () => { if (job === jobRef.current) setImgFailed(true); resolve(4 / 3); };
         t.src = matches[0].img;
       });
+      const ar = matches[0].w && matches[0].h
+        ? matches[0].h / matches[0].w
+        : await probe;
+      await probe;
       if (job !== jobRef.current) return;
       setMatchAr(ar);
       setMatch(matches[0]);
@@ -180,7 +188,8 @@ export default function App() {
     const t = new Image();
     t.onload = () => {
       if (n !== swapRef.current) return;
-      setMatchAr(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
+      setMatchAr(r.w && r.h ? r.h / r.w : (t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3));
+      setImgFailed(false);
       setMatch(prev => {
         if (!prev) return r;
         // stable order: the demoted winner joins the end, others stay put
@@ -189,6 +198,11 @@ export default function App() {
       });
       setSwappedAt(Date.now());
       haptics.trigger("light");
+    };
+    t.onerror = () => {
+      if (n !== swapRef.current) return;
+      // a near miss that can't paint gets skipped, not hung as a blank mat
+      setRunners(rs => rs.filter(x => x.id !== r.id));
     };
     t.src = r.img;
   }, []);
@@ -199,9 +213,13 @@ export default function App() {
   const ph = Math.min(ph0, mobile ? 200 : 330);
   const pwEff = ph < ph0 ? ph * (photo ? photo.w / photo.h : 4 / 3) : pw;
   const aw = mobile ? 162 : 268;
-  const ah0 = aw * matchAr;
+  // extreme aspect ratios (scrolls, panoramas) would frame as a sliver or a
+  // hairline; clamp to a readable band so the mat always shows a detail
+  const displayAr = Math.min(Math.max(matchAr, 0.3), 3.3);
+  const isDetail = Math.abs(displayAr - matchAr) > 0.01;
+  const ah0 = aw * displayAr;
   const ah = Math.min(ah0, mobile ? 220 : 340);
-  const awEff = ah < ah0 ? ah / matchAr : aw;
+  const awEff = ah < ah0 ? ah / displayAr : aw;
   const seamY = mobile ? 160 : 330;
   const pTop = seamY - ph / 2 - 5;
   const aTop = seamY - ah / 2 - 5;
@@ -303,7 +321,9 @@ export default function App() {
         >
           <div className="moulding">
             <div className="mat">
-              {match && <img key={match.id} src={match.img} alt={match.title} />}
+              {match && (imgFailed
+                ? <div className="broken"><span>the work stayed in storage</span></div>
+                : <img key={match.id} src={match.img} alt={match.title} onError={() => setImgFailed(true)} />)}
             </div>
             {swappedAt > 0 && <div className="flashring" key={swappedAt} />}
           </div>
@@ -331,8 +351,9 @@ export default function App() {
             <>
               <div className="title" title={match.title}>{match.title}</div>
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
+              {isDetail && <div className="detail-note">an unusually shaped work — shown as a detail</div>}
               <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId
-                ? (limited ? "its nearest neighbor" : "its nearest of 22,669 works")
+                ? (limited ? "its nearest neighbor" : "its nearest of 22,099 works")
                 : "another resemblance"}</div>
               {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}
               <div className="actions">
@@ -353,7 +374,8 @@ export default function App() {
                     <button key={r.id} className="mini" onClick={() => swapRunner(r)} aria-label={`Hang ${r.title} instead`}>
                       <img src={r.img} alt={r.title}
                         ref={el => { if (el?.complete && el.naturalWidth) el.classList.add("ld"); }}
-                        onLoad={e => e.currentTarget.classList.add("ld")} />
+                        onLoad={e => e.currentTarget.classList.add("ld")}
+                        onError={() => setRunners(rs => rs.filter(x => x.id !== r.id))} />
                       {showScores && <span>{r.score}</span>}
                     </button>
                   ))}

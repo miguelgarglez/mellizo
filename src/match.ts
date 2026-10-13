@@ -6,13 +6,23 @@ import { WALL_ART, type Match } from "./data";
 const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-// Measured on the real corpus: CLIP cosine similarity between a photo and an
-// artwork lands ~0.30 for unrelated pairs and ~0.50-0.55 for eerie ones.
-// Map that band linearly so near misses keep distinguishable scores
-// instead of saturating at the top.
+// Measured on the live corpus (15 diverse photos through the production q8
+// model): a photo's nearest artwork lands at cosine ~0.55-0.76, and only a
+// near-duplicate of the work itself approaches 1. Map 0.42 -> 41 and
+// 0.95 -> 97 so real matches spread across the 50s-80s instead of every top
+// answer saturating at 97.
 export function resemblance(sim: number): number {
-  return Math.round(Math.min(97, Math.max(41, 41 + (sim - 0.30) / 0.22 * 56)));
+  return Math.round(Math.min(97, Math.max(41, 41 + (sim - 0.42) / 0.53 * 56)));
 }
+
+// A work whose display image is a sliver (aspect beyond 4:1, or a side under
+// 128px) embeds as a smear and frames as an invisible strip. The corpus
+// excludes these server-side; keep the client guard too so a stale function
+// can never send one to the wall.
+const degenerate = (r: any) =>
+  Number.isFinite(r.img_w) && Number.isFinite(r.img_h) &&
+  (Math.min(r.img_w, r.img_h) < 128 ||
+    Math.max(r.img_w / r.img_h, r.img_h / r.img_w) > 4);
 
 export async function findMatches(v: number[], count = 5): Promise<{ list: Match[]; limited: boolean }> {
   if (URL_ && KEY) {
@@ -36,7 +46,8 @@ export async function findMatches(v: number[], count = 5): Promise<{ list: Match
               typeof r.id === "string" &&
               Number.isFinite(r.distance) &&
               typeof (r.thumb_url || r.image_url) === "string" &&
-              /^(https?:)?\/\//.test(r.thumb_url || r.image_url))
+              /^(https?:)?\/\//.test(r.thumb_url || r.image_url) &&
+              !degenerate(r))
           : [];
         if (ok.length) {
           return {
@@ -46,7 +57,9 @@ export async function findMatches(v: number[], count = 5): Promise<{ list: Match
               date: String(r.date ?? ""),
               img: r.thumb_url || r.image_url,
               objectUrl: typeof r.object_url === "string" ? r.object_url : "",
-              w: 4, h: 3, score: resemblance(1 - r.distance),
+              w: Number.isFinite(r.img_w) ? r.img_w : 4,
+              h: Number.isFinite(r.img_h) ? r.img_h : 3,
+              score: resemblance(1 - r.distance),
             })),
           };
         }
