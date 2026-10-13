@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { WebHaptics } from "web-haptics";
 import { WALL_ART, type Match } from "./data";
 import { ENTRY_DESKTOP, ENTRY_MOBILE, RESULT_DESKTOP, RESULT_MOBILE, place } from "./hang";
-import { warmup, embedImage } from "./clip";
 import { findMatches } from "./match";
 
 type Phase = "idle" | "busy" | "result" | "error";
 type Photo = { url: string; w: number; h: number };
+
+const haptics = new WebHaptics();
 
 const STATUS = {
   reading: "Reading your photograph…",
@@ -55,6 +57,7 @@ export default function App() {
       setPhoto({ url, w: img.naturalWidth, h: img.naturalHeight });
 
       setStatus(STATUS.embedding);
+      const { warmup, embedImage } = await import("./clip");
       warmup(setModelPct);
       const v = await embedImage(img);
 
@@ -64,6 +67,7 @@ export default function App() {
       setMatch(matches[0]);
       setRunners(matches.slice(1));
       setPhase("result");
+      haptics.trigger("success");
     } catch {
       setPhase("error");
       setStatus("The wall couldn't read that photograph. Try another image.");
@@ -71,6 +75,16 @@ export default function App() {
       busyRef.current = false;
     }
   }, []);
+
+  // paste a photo straight onto the wall
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const f = [...(e.clipboardData?.files ?? [])].find(f => f.type.startsWith("image/"));
+      if (f) handleFile(f);
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [handleFile]);
 
   const reset = useCallback(() => {
     setPhoto(p => { if (p) URL.revokeObjectURL(p.url); return null; });

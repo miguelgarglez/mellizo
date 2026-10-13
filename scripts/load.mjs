@@ -13,16 +13,17 @@ const URL_ = process.env.SUPABASE_LAB_URL, KEY = process.env.SUPABASE_LAB_SERVIC
 if (!URL_ || !KEY) { console.error("missing supabase env"); process.exit(1); }
 
 const dir = f => new URL(`../data/${f}`, import.meta.url).pathname;
+const norm = (id, src) => String(id).includes("-") ? String(id) : `${src}-${id}`;
 const meta = new Map();
-for (const f of ["catalog-met.jsonl", "catalog-cle.jsonl"]) {
+for (const [f, src] of [["catalog-met.jsonl", "met"], ["catalog-cle.jsonl", "cle"]]) {
   if (!fs.existsSync(dir(f))) continue;
   const rl = readline.createInterface({ input: fs.createReadStream(dir(f)), crlfDelay: Infinity });
-  for await (const l of rl) if (l.trim()) { const r = JSON.parse(l); meta.set(r.id, r); }
+  for await (const l of rl) if (l.trim()) { const r = JSON.parse(l); meta.set(norm(r.id, src), r); }
 }
 const emb = new Map();
 {
   const rl = readline.createInterface({ input: fs.createReadStream(dir("embeddings.jsonl")), crlfDelay: Infinity });
-  for await (const l of rl) if (l.trim()) { const r = JSON.parse(l); emb.set(r.id, r.v); }
+  for await (const l of rl) if (l.trim()) { const r = JSON.parse(l); emb.set(norm(r.id, "met"), r.v); }
 }
 
 const rows = [];

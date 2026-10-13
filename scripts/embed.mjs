@@ -7,7 +7,7 @@ import { AutoProcessor, CLIPVisionModelWithProjection, RawImage } from "@hugging
 const OUT = new URL("../data/embeddings.jsonl", import.meta.url).pathname;
 const SOURCES = ["catalog-met.jsonl", "catalog-cle.jsonl"].map(
   f => new URL(`../data/${f}`, import.meta.url).pathname);
-const BATCH = 8, DL_CONCURRENCY = 10;
+const BATCH = 8;
 
 const done = new Set();
 if (fs.existsSync(OUT))
@@ -71,7 +71,7 @@ while (cursor < rows.length || pool.size) {
       out.write(JSON.stringify({ id: batch[i].r.id, v: v.map(x => +(x / n).toFixed(6)) }) + "\n");
     }
     written += batch.length;
-  } catch (e) { failed += batch.length; }
+  } catch { failed += batch.length; }
   if (written % 500 < BATCH) console.log(`${written} embedded, ${failed} failed, ${((Date.now()-t0)/written/1000).toFixed(2)}s/img`);
 }
 await new Promise(r => out.end(r));
