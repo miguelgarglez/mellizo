@@ -401,7 +401,7 @@ button.frame:disabled { cursor: default; }
 .strip-open .frame:not(.reserved):not(.twin):not(.gone) img { filter: saturate(.3) brightness(1.14); opacity: .55; }
 /* any work that would land on the caption's or the strip's ground steps
    off the wall entirely — text never fights a moulding */
-.phase-result .frame.under { opacity: 0; pointer-events: none; }
+.phase-result .frame.under:not(.reserved):not(.twin):not(.gone) { opacity: 0; pointer-events: none; }
 
 /* ---------- resemblance mark — a wax seal, not a score badge ---------- */
 .mark {
