@@ -26,18 +26,23 @@ for (const f of CATALOGS) {
   if (!fs.existsSync(dir(f))) continue;
   const rl = readline.createInterface({ input: fs.createReadStream(dir(f)), crlfDelay: Infinity });
   for await (const l of rl) if (l.trim()) {
-    const r = JSON.parse(l);
-    meta.set(r.id, r);
+    try {
+      const r = JSON.parse(l);
+      if (r.id) meta.set(r.id, r);
+    } catch { /* tolerate a torn tail line while a fetcher appends */ }
   }
 }
 console.log(`${meta.size} catalog rows`);
 
 const emb = new Map();
-{
-  const rl = readline.createInterface({ input: fs.createReadStream(dir("embeddings-v2.jsonl")), crlfDelay: Infinity });
+for (const f of fs.readdirSync(dir("."))) {
+  if (!/^embeddings-.*\.jsonl$/.test(f)) continue;
+  const rl = readline.createInterface({ input: fs.createReadStream(dir(f)), crlfDelay: Infinity });
   for await (const l of rl) if (l.trim()) {
-    const r = JSON.parse(l);
-    emb.set(r.id, r);
+    try {
+      const r = JSON.parse(l);
+      if (r.id && Array.isArray(r.v)) emb.set(r.id, r);
+    } catch { /* tolerate a torn tail line */ }
   }
 }
 console.log(`${emb.size} embeddings`);
@@ -55,7 +60,8 @@ for (const f of ORDER) {
   if (!fs.existsSync(dir(f))) continue;
   const rl = readline.createInterface({ input: fs.createReadStream(dir(f)), crlfDelay: Infinity });
   for await (const l of rl) if (l.trim()) {
-    const m = JSON.parse(l);
+    let m;
+    try { m = JSON.parse(l); } catch { continue; }
     if (seen.has(m.id)) continue;
     seen.add(m.id);
     const e = emb.get(m.id);

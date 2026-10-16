@@ -6,12 +6,12 @@ import fs from "node:fs";
 import readline from "node:readline";
 import { AutoProcessor, CLIPVisionModelWithProjection, RawImage } from "@huggingface/transformers";
 
-const OUT = new URL("../data/embeddings-v2.jsonl", import.meta.url).pathname;
-const LOG = new URL("../data/embeddings-v2.log", import.meta.url).pathname;
-const SOURCES = [
+const OUT = new URL(`../data/${process.env.EMBED_OUT ?? "embeddings-v2.jsonl"}`, import.meta.url).pathname;
+const LOG = new URL(`../data/${(process.env.EMBED_OUT ?? "embeddings-v2.jsonl").replace(/\.jsonl$/, "")}.log`, import.meta.url).pathname;
+const SOURCES = (process.env.EMBED_SOURCES?.split(",") ?? [
   "catalog-met.jsonl", "catalog-met-wd.jsonl", "catalog-cle.jsonl",
   "catalog-aic.jsonl", "catalog-nga.jsonl",
-].map(f => new URL(`../data/${f}`, import.meta.url).pathname);
+]).map(f => new URL(`../data/${f}`, import.meta.url).pathname);
 const BATCH = 8;
 const AHEAD = 28;          // download lookahead pool
 const MODEL = "Xenova/clip-vit-base-patch32";
@@ -19,18 +19,24 @@ const MODEL = "Xenova/clip-vit-base-patch32";
 const degenerate = (w, h) =>
   Math.min(w, h) < 128 || Math.max(w / h, h / w) > 4;
 
+// done-set: every embeddings-*.jsonl counts, so parallel workers on
+// disjoint sources never repeat each other's work
 const done = new Set();
-if (fs.existsSync(OUT))
-  for (const l of fs.readFileSync(OUT, "utf8").split("\n"))
-    if (l.trim()) done.add(JSON.parse(l).id);
+for (const f of fs.readdirSync(new URL("../data/", import.meta.url).pathname)) {
+  if (!/^embeddings-.*\.jsonl$/.test(f)) continue;
+  for (const l of fs.readFileSync(new URL(`../data/${f}`, import.meta.url).pathname, "utf8").split("\n"))
+    if (l.trim()) { try { done.add(JSON.parse(l).id); } catch { } }
+}
 
 const rows = [];
 for (const f of SOURCES) {
   if (!fs.existsSync(f)) continue;
   const rl = readline.createInterface({ input: fs.createReadStream(f), crlfDelay: Infinity });
   for await (const l of rl) if (l.trim()) {
-    const r = JSON.parse(l);
-    if (!done.has(r.id)) rows.push(r);
+    try {
+      const r = JSON.parse(l);          // a fetcher may still be appending
+      if (r.id && !done.has(r.id)) rows.push(r);
+    } catch { /* torn tail line: a later pass catches it */ }
   }
 }
 console.log(`${rows.length} to embed (${done.size} already done)`);
@@ -69,7 +75,7 @@ async function dl(r) {
   try {
     for (let a = 0; a < 2; a++) {
       try {
-        const headers = {};
+        const headers = { "User-Agent": "mellizo-corpus/1.0 (open corpus research)" };
         const ref = refererFor(r);
         if (ref) headers.Referer = ref;
         const res = await fetch(r.thumb_url, { headers, signal: AbortSignal.timeout(25000) });
