@@ -25,19 +25,29 @@ async function q(sql) {
   return text;
 }
 
-const BATCH = 2000;
+const BATCH = 1500;
 const mine = `pictorial is null and hashtext(id) % ${SHARDS} = ${SHARD}`;
 for (let i = 0; ; i++) {
   const t = Date.now();
-  await q(`update mellizo.artworks a
-    set pictorial = mellizo.pictorial(a.medium)
-    where a.id in (select id from mellizo.artworks where ${mine} limit ${BATCH})`);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await q(`update mellizo.artworks a
+        set pictorial = mellizo.pictorial(a.medium)
+        where a.id in (select id from mellizo.artworks where ${mine} limit ${BATCH})`);
+      break;
+    } catch (e) {
+      if (attempt >= 5) throw e;
+      await new Promise(r => setTimeout(r, 4000 * (attempt + 1)));
+    }
+  }
   if (i % 8 === 7) {
-    const left = JSON.parse(await q(
-      `select count(*)::int as n from mellizo.artworks where ${mine}`));
-    const n = Array.isArray(left) ? left[0].n : left;
-    console.log(`shard ${SHARD} batch ${i + 1}: ${((Date.now() - t) / 1000).toFixed(1)}s, remaining ${n}`);
-    if (!n) break;
+    try {
+      const left = JSON.parse(await q(
+        `select count(*)::int as n from mellizo.artworks where ${mine}`));
+      const n = Array.isArray(left) ? left[0].n : left;
+      console.log(`shard ${SHARD} batch ${i + 1}: ${((Date.now() - t) / 1000).toFixed(1)}s, remaining ${n}`);
+      if (!n) break;
+    } catch { /* count timed out under load — keep going */ }
   }
 }
 console.log(`shard ${SHARD} done`);
