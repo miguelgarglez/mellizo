@@ -344,10 +344,10 @@ export default function App() {
     const gone = result && !r;
     const tx = result ? (r ? r.x : (p.x < 700 ? p.x - 1600 : p.x + 1600)) - p.x : 0;
     const ty = result && r ? r.y - p.y : 0;
-    const under = result && r != null && showRunners &&
+    const under = result && r != null &&
       r.y + (r.w * r.art.h) / r.art.w + 10 > capTop - 30 &&
-      (r.x + r.w / 2 > (mobile ? 0 : Math.min(twinX - 30, capLeft - 20)) &&
-       r.x + r.w / 2 < (mobile ? 375 : Math.max(twinX + awEff + 30, capLeft + capW + 20)));
+      ((r.x + r.w / 2 > capLeft - 20 && r.x + r.w / 2 < capLeft + capW + 20) ||
+       (showRunners && !mobile && r.x + r.w / 2 > twinX - 30 && r.x + r.w / 2 < twinX + awEff + 30));
     // sizes ride the transform as scale around the frame's top left, so
     // the rehang pays no layout — left/top/width/height never animate
     const s = result && r ? r.w / p.w : 1;
@@ -683,8 +683,8 @@ export default function App() {
         {phase === "idle" && (
           <button className="sampleframe" onClick={useSample}
             style={mobile
-              ? { left: resBase.x + resBase.w / 2 - 36, top: resBase.y + resBase.h + 64 }
-              : { left: resBase.x - 42, top: resBase.y + resBase.h + 72 }}
+              ? { left: resBase.x + resBase.w + 16, top: resBase.y + 116 }
+              : { left: resBase.x - 86, top: resBase.y + 235 }}
             aria-label="Hang the sample photograph">
             <span className="sf-mould"><span className="sf-mat"><img src="/sample.jpg" alt="" /></span></span>
             <span className="sf-cap">this snowdrop</span>

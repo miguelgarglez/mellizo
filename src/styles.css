@@ -399,7 +399,9 @@ button.frame:disabled { cursor: default; }
    so the thumbnails always land on empty wall, not on dimmed paintings */
 .strip-open .frame:not(.reserved):not(.twin):not(.gone) { opacity: .32; }
 .strip-open .frame:not(.reserved):not(.twin):not(.gone) img { filter: saturate(.3) brightness(1.14); opacity: .55; }
-.strip-open .frame:not(.reserved):not(.twin):not(.gone).under { opacity: 0; pointer-events: none; }
+/* any work that would land on the caption's or the strip's ground steps
+   off the wall entirely — text never fights a moulding */
+.phase-result .frame.under { opacity: 0; pointer-events: none; }
 
 /* ---------- resemblance mark — a wax seal, not a score badge ---------- */
 .mark {
