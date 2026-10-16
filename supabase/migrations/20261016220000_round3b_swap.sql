@@ -5,8 +5,12 @@
 -- tier — the client's pocket-corpus fallback covers the gap, and a
 -- fresh index is built on the new table right after the swap.
 
+drop function if exists mellizo.match_artworks_next(vector(512), integer);
 drop table if exists mellizo.artworks;
 alter table mellizo.artworks_next rename to artworks;
+-- every staged row was curated pictorial at embed time; the column keeps
+-- corpus_size/matching cheap and matches the live table's shape
+alter table mellizo.artworks add column if not exists pictorial boolean not null default true;
 
 create or replace function mellizo.match_artworks(
   query_embedding vector(512),
@@ -25,7 +29,7 @@ as $$
          image_url, thumb_url, object_url, img_w, img_h, pal, sal,
          (embedding <=> query_embedding::halfvec) as distance
   from mellizo.artworks
-  where mellizo.pictorial(medium)
+  where pictorial
   order by embedding <=> query_embedding::halfvec
   limit least(match_count, 40);
 $$;
@@ -35,7 +39,7 @@ returns int
 language sql stable
 security definer
 set search_path = mellizo, public
-as $$ select count(*)::int from mellizo.artworks where mellizo.pictorial(medium) $$;
+as $$ select count(*)::int from mellizo.artworks where pictorial $$;
 
 grant execute on function mellizo.match_artworks(vector(512), int) to anon, authenticated;
 grant execute on function mellizo.corpus_size() to anon, authenticated;
