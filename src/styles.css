@@ -37,7 +37,8 @@ body {
    gives the strip its space so everything stays inside the fold */
 .room.m.strip-open .why { display: none; }
 .room.m .caption .actions { position: absolute; left: 0; right: 0; }
-.room.m .markplac { display: none; }
+.room.m .lensrow { margin-top: 8px; }
+.room.m .caption .verdict-note { margin-top: 2px; }
 /* the photograph's label steps left and quietens so the seal owns the gap alone */
 .room.m .reserved .accn { left: 0; transform: none; font-size: calc(9.5px * var(--fz, 1)); letter-spacing: .02em; }
 
@@ -80,7 +81,7 @@ body {
 .phase-idle .frame:nth-child(2n) { animation-delay: .8s; }
 .phase-idle .frame:nth-child(3n) { animation-delay: 1.6s; }
 .phase-idle .frame:nth-child(4n) { animation-delay: 2.4s; }
-@keyframes wallDrift { to { transform: translate(5px, -3px); } }
+@keyframes wallDrift { to { transform: translate(5px, -3px) scale(1); } }
 /* in the result the pair owns the room; the rest of the hang steps back —
    paintings dim, frames keep their material so the wall stays physical */
 .phase-result .frame:not(.reserved):not(.twin):not(.gone) { opacity: .78; }
@@ -197,11 +198,6 @@ svg.lens {
   font-size: calc(16px * var(--fz, 1)); line-height: 1.45; color: var(--ink);
   max-width: 34ch; margin: 0 auto;
 }
-.whytag {
-  display: block; font-family: "Inter", sans-serif; font-style: normal;
-  font-size: calc(9px * var(--fz, 1)); letter-spacing: .14em; text-transform: uppercase;
-  color: var(--ink-soft); margin-bottom: 3px;
-}
 .lensrow { display: flex; gap: 28px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
 /* the lenses are registrar's marks, not control chips — a word and a red
    square when the layer is on */
@@ -214,10 +210,11 @@ svg.lens {
 }
 .lensbtn::before {
   content: ""; display: inline-block; width: 6px; height: 6px;
-  margin-right: 8px; background: transparent; vertical-align: 1px;
+  margin-right: 8px; background: var(--red); vertical-align: 1px;
+  transform: scale(0); transition: transform .16s var(--ease-out);
 }
 .lensbtn.on { color: var(--red); }
-.lensbtn.on::before { background: var(--red); }
+.lensbtn.on::before { transform: scale(1); }
 .lensbtn:active { transform: scale(.97); }
 @media (hover: hover) and (pointer: fine) {
   .lensbtn:hover { color: var(--ink); }
@@ -310,6 +307,10 @@ button.frame:disabled { cursor: default; }
 .room.m .vinyl h1 { font-size: calc(30px * var(--fz, 1)); margin-top: 4px; }
 .vinyl h1 em { font-style: italic; font-weight: 300; }
 .vinyl .sub { margin-top: 16px; font-size: calc(14px * var(--fz, 1)); line-height: 1.55; color: var(--ink-soft); max-width: 330px; }
+.vinyl .wallsize {
+  margin-top: 14px; font-family: "IBM Plex Mono", monospace;
+  font-size: calc(10px * var(--fz, 1)); letter-spacing: .14em; color: var(--ink-soft);
+}
 .room.m .vinyl .sub { font-size: calc(12.5px * var(--fz, 1)); max-width: 300px; margin-top: 10px; }
 .vinyl .sub.status { font-family: "IBM Plex Mono", monospace; font-size: calc(12px * var(--fz, 1)); letter-spacing: .06em; color: var(--ink); }
 /* the wait always has a heartbeat: real progress during download,
@@ -345,9 +346,9 @@ button.frame:disabled { cursor: default; }
 .sampleframe .sf-mat { display: block; padding: 3px; background: var(--label); }
 .sampleframe .sf-mat img { width: 100%; display: block; }
 .sampleframe .sf-cap {
-  display: block; margin-top: 7px; text-align: center;
-  font-family: "IBM Plex Mono", monospace; font-size: calc(9px * var(--fz, 1));
-  letter-spacing: .12em; color: var(--ink-soft);
+  display: block; margin-top: 7px; text-align: center; white-space: nowrap;
+  font-family: "Fraunces", serif; font-style: italic; font-size: calc(13px * var(--fz, 1));
+  color: var(--ink);
 }
 @media (hover: hover) and (pointer: fine) {
   .sampleframe:hover .sf-mould {
@@ -418,27 +419,19 @@ button.frame:disabled { cursor: default; }
   transition: opacity .28s var(--ease-out), transform .28s var(--ease-out);
 }
 .mark.on { opacity: 1; transform: scale(1); }
-/* the seal's placard — one honest line, no hover hunt required */
-.markplac {
-  position: absolute; top: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%);
-  width: max-content; max-width: 190px; white-space: normal; text-align: center;
-  background: var(--label); border: 1px solid var(--hairline);
-  color: var(--ink-soft); font-family: "Inter", sans-serif;
-  font-size: calc(10px * var(--fz, 1)); line-height: 1.35; padding: 5px 9px;
-  opacity: 0; transition: opacity .4s ease .25s;
-  pointer-events: none;
+/* a near-miss ghost inside the twin's reach rings its moulding */
+.frame.twin.droptarget .moulding {
+  box-shadow: 0 0 0 2px var(--red), 1px 2px 4px rgba(24,20,14,.15), 3px 8px 16px -8px rgba(24,20,14,.22);
 }
-.mark.on .markplac { opacity: 1; }
 /* the light pass — one sweep travels from the photograph to the work as
    the twin lands, then leaves; the room goes back to the wall */
 .lightpass {
-  position: absolute; width: 480px; height: 480px; border-radius: 50%;
+  position: absolute; width: 640px; height: 640px; border-radius: 50%;
   pointer-events: none; z-index: 2;
-  background: radial-gradient(circle, rgba(255,252,240,.55) 0%, rgba(255,252,240,0) 62%);
+  background: radial-gradient(circle, rgba(255,244,220,.9) 0%, rgba(255,244,220,0) 62%);
   mix-blend-mode: soft-light;
   opacity: 0;
-  animation: lightTravel 1s ease-in-out .4s forwards;
+  animation: lightTravel .9s var(--ease-wall) .3s forwards;
 }
 @keyframes lightTravel {
   0% { transform: translate(0, 0) scale(.25); opacity: 0; }
@@ -472,6 +465,11 @@ button.frame:disabled { cursor: default; }
   min-height: 2.4em; /* reserves two lines so swaps don't shift the actions */
 }
 .caption .verdict b { color: var(--red); font-weight: 500; }
+/* what the number means — a line in the verdict, not a card on the paint */
+.caption .verdict-note {
+  margin-top: 5px; font-family: "Fraunces", serif; font-style: italic;
+  font-size: calc(12px * var(--fz, 1)); color: var(--ink);
+}
 .caption:focus { outline: none; }
 .caption .limited {
   font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .06em;
@@ -479,16 +477,18 @@ button.frame:disabled { cursor: default; }
 }
 /* pinned inside the caption's coordinates — swapping runners never shifts
    these buttons, whatever the lens stack above them holds */
-.caption .actions { position: absolute; left: 0; right: 0; top: 240px; display: flex; gap: 30px; justify-content: center; }
+.caption .actions { position: absolute; left: 0; right: 0; top: 232px; display: flex; gap: 30px; justify-content: center; }
+/* the actions are registrar's words like the lenses, not underlined links */
 .caption .actions button {
-  background: none; border: 0; font: inherit; font-size: calc(13px * var(--fz, 1)); color: var(--ink);
-  text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--ink);
-  padding: 16px 6px; margin: -12px -6px; cursor: pointer;
+  background: none; border: 0; padding: 16px 6px; margin: -12px -6px; cursor: pointer;
+  font-family: "IBM Plex Mono", monospace; font-size: calc(11px * var(--fz, 1));
+  letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft);
+  transition: color .25s ease, transform .12s var(--ease-out);
 }
-@media (hover: hover) {
-  .caption .actions button:hover { color: var(--red); text-decoration-color: var(--red); }
+@media (hover: hover) and (pointer: fine) {
+  .caption .actions button:hover { color: var(--ink); }
 }
-.caption .actions button:active { color: var(--red); }
+.caption .actions button:active { color: var(--red); transform: scale(.97); }
 .caption .actions button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 
 /* ---------- near-miss strip ---------- */
@@ -521,7 +521,9 @@ button.frame:disabled { cursor: default; }
   opacity: 0; transition: opacity .35s ease, transform .18s var(--ease-wall);
 }
 .strip .mini img.ld { opacity: 1; }
-@media (hover: hover) { .strip .mini:hover img { transform: translateY(-2px); } }
+@media (hover: hover) and (pointer: fine) {
+  .strip .mini:hover img { transform: translateY(-4px); box-shadow: 2px 8px 16px -6px rgba(24,20,14,.35); }
+}
 .strip .mini:active img { transform: translateY(1px); }
 .strip .mini:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .strip .mini span {

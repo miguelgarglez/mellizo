@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { WebHaptics } from "web-haptics";
 import { WALL_ART, type Match } from "./data";
 import { ENTRY_DESKTOP, ENTRY_MOBILE, RESULT_DESKTOP, RESULT_MOBILE, place } from "./hang";
@@ -301,7 +301,7 @@ export default function App() {
   // so the twin hangs below the photograph's label, seal between.
   const pw = mobile ? 300 : 380;
   const ph0 = photo ? pw * (photo.h / photo.w) : pw * 0.75;
-  const ph = Math.min(ph0, mobile ? 150 : 330);
+  const ph = Math.min(ph0, mobile ? 160 : 330);
   const pwEff = ph < ph0 ? ph * (photo ? photo.w / photo.h : 4 / 3) : pw;
   const aw = mobile ? 300 : 340;
   // extreme aspect ratios (scrolls, panoramas) would frame as a sliver or a
@@ -313,9 +313,12 @@ export default function App() {
   const awEff = ah < ah0 ? ah / displayAr : aw;
   const seamY = mobile ? 0 : 330;
   const pTop = mobile ? 56 : seamY - ph / 2 - 5;
-  const aTop = mobile ? pTop + ph + 10 + 28 : seamY - ah / 2 - 5;
-  const px = mobile ? (375 - pwEff) / 2 : 330;
-  const ax = mobile ? (375 - awEff) / 2 : 755;
+  const aTop = mobile ? pTop + ph + 38 : seamY - ah / 2 - 5;
+  // the gap carries the seal: 72px on desktop so wax gets wall on both
+  // sides; the pair block stays centered whatever the aspect ratios
+  const gap = 72;
+  const px = mobile ? (375 - pwEff) / 2 : (1440 - pwEff - gap - awEff) / 2;
+  const ax = mobile ? (375 - awEff) / 2 : px + pwEff + gap;
   // the pair hangs in a fixed-height slot: labels and caption never move,
   // regardless of the photo's or artwork's aspect ratio
   const slotH = 175;
@@ -323,13 +326,13 @@ export default function App() {
   // the caption centers under the photograph + gap; the near-miss strip
   // takes the twin's column — reading on the left, candidates on the right
   const capLeft = mobile ? Math.round((375 - 320) / 2) : Math.round((px + ax) / 2) - 185;
-  // the twin's true x: ax slots the aw-column, the narrower effective frame
-  // centers inside it on desktop; on mobile ax already centers awEff
-  const twinX = mobile ? ax : ax + (aw - awEff) / 2;
+  // ax is the twin's actual left rail — the gap between the frames'
+  // edges is exactly `gap`, and mid-gap is the seal's home
+  const twinX = ax;
   // the seal sits mid-gap: between the frames on desktop; on mobile it
   // stamps the top edge of the twin so the photo's label stays readable
   const markX = mobile ? twinX + awEff / 2 : px + pwEff + (ax - px - pwEff) / 2;
-  const markY = mobile ? pTop + ph + 10 + 40 : seamY;
+  const markY = mobile ? pTop + ph + 56 : seamY;
 
   // ----- frame positions: entry hang ↔ result rehang -----
   // Frames keep their entry left/top as the base position; the rehang moves
@@ -346,20 +349,33 @@ export default function App() {
     const ty = result && r ? r.y - p.y : 0;
     const under = result && r != null &&
       r.y + (r.w * r.art.h) / r.art.w + 10 > capTop - 30 &&
-      ((r.x + r.w / 2 > capLeft - 20 && r.x + r.w / 2 < capLeft + capW + 20) ||
-       (showRunners && !mobile && r.x + r.w / 2 > twinX - 30 && r.x + r.w / 2 < twinX + awEff + 30));
+      ((r.x + r.w > capLeft - 30 && r.x < capLeft + capW + 30) ||
+       (showRunners && !mobile && r.x + r.w > twinX - 30 && r.x < twinX + awEff + 30));
     // sizes ride the transform as scale around the frame's top left, so
     // the rehang pays no layout — left/top/width/height never animate
     const s = result && r ? r.w / p.w : 1;
     return { p, tx, ty, s, w: p.w, gone, under, deep: r?.deep ?? p.deep };
   });
 
-  // reserved frame: entry spot is the base, result translates + scales it
-  // into the pair — the transform carries the whole rehang
+  // reserved frame: in result its box IS the pair geometry — a delta
+  // transform keeps it painted at the entry spot for one frame, then
+  // releases to zero. The flight is a pure translate, compositor-owned,
+  // and the moulding's rails stay 5px instead of stretching under a
+  // non-uniform scale
   const resBase = mobile ? { x: 30, y: 184, w: 200, h: 278 } : { x: 742, y: 105, w: 240, h: 330 };
-  const resT = result
-    ? { x: px - resBase.x, y: pTop - resBase.y, sx: pwEff / resBase.w, sy: (ph + 10) / resBase.h }
-    : { x: 0, y: 0, sx: 1, sy: 1 };
+  const [resFlip, setResFlip] = useState(false);
+  useLayoutEffect(() => {
+    if (!result) return;
+    setResFlip(true);
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setResFlip(false)));
+    return () => cancelAnimationFrame(raf);
+  }, [result]);
+  const resStyle: React.CSSProperties = result
+    ? { left: px, top: pTop, width: pwEff, height: ph + 10,
+        transform: resFlip ? `translate(${resBase.x - px}px, ${resBase.y - pTop}px)` : "translate(0px, 0px)",
+        transition: resFlip ? "none" : undefined }
+    : { left: resBase.x, top: resBase.y, width: resBase.w, height: resBase.h,
+        transform: "translate(0px, 0px)" };
 
   // the twin rests off-view right, slides to its result spot
   const twinBase = { x: 1700, y: 220 };
@@ -401,40 +417,51 @@ export default function App() {
   const suppressClick = useRef(0);
   const onMiniDown = (e: React.PointerEvent<HTMLButtonElement>, r: Match) => {
     if (e.button !== 0) return;
-    const src = e.currentTarget.querySelector("img")?.src ?? displayUrl(r);
+    const el = e.currentTarget;
+    const src = el.querySelector("img")?.src ?? displayUrl(r);
     const g = document.createElement("div");
     g.className = "dragghost";
     const im = document.createElement("img");
-    im.src = src; g.appendChild(im);
+    im.src = src; im.draggable = false; g.appendChild(im);
     g.style.left = `${e.clientX - 36}px`; g.style.top = `${e.clientY - 27}px`;
     document.body.appendChild(g);
+    const twin = document.querySelector(".twin");
+    const near = (x: number, y: number) => {
+      const t = twin?.getBoundingClientRect();
+      return !!t && Math.hypot(x - (t.left + t.width / 2), y - (t.top + t.height / 2)) < 96;
+    };
     const start = { x: e.clientX, y: e.clientY };
     const st = { moved: false, done: false };
     const move = (ev: PointerEvent) => {
       if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > 6) st.moved = true;
       g.style.left = `${ev.clientX - 36}px`; g.style.top = `${ev.clientY - 27}px`;
+      // the wall answers the hand: inside the twin's reach, ring it
+      twin?.classList.toggle("droptarget", near(ev.clientX, ev.clientY));
     };
     const up = (ev: PointerEvent) => {
       if (st.done) return; st.done = true;
-      e.currentTarget.releasePointerCapture?.(e.pointerId);
-      e.currentTarget.removeEventListener("pointermove", move);
-      e.currentTarget.removeEventListener("pointerup", up);
-      const t = document.querySelector(".twin")?.getBoundingClientRect();
-      const cx = t ? t.left + t.width / 2 : -1e4, cy = t ? t.top + t.height / 2 : -1e4;
-      if (Math.hypot(ev.clientX - cx, ev.clientY - cy) < 96) {
+      twin?.classList.remove("droptarget");
+      el.releasePointerCapture?.(e.pointerId);
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+      if (near(ev.clientX, ev.clientY)) {
         g.remove(); swapRunner(r); suppressClick.current = Date.now();
       } else if (st.moved) {
         suppressClick.current = Date.now();
-        g.style.transition = "left .28s cubic-bezier(.23,1,.32,1), top .28s cubic-bezier(.23,1,.32,1), opacity .28s ease";
-        g.style.left = `${start.x - 36}px`; g.style.top = `${start.y - 27}px`; g.style.opacity = "0";
+        // flies home whole — the work stays painted for the full return
+        g.style.transition = "left .28s cubic-bezier(.23,1,.32,1), top .28s cubic-bezier(.23,1,.32,1)";
+        g.style.left = `${start.x - 36}px`; g.style.top = `${start.y - 27}px`;
         setTimeout(() => g.remove(), 300);
       } else {
         g.remove(); // no travel — let the click event do the hanging
       }
     };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    e.currentTarget.addEventListener("pointermove", move);
-    e.currentTarget.addEventListener("pointerup", up);
+    el.setPointerCapture?.(e.pointerId);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    // a native image drag cancels the pointer stream — treat it as a release
+    el.addEventListener("pointercancel", up);
   };
 
   return (
@@ -466,10 +493,7 @@ export default function App() {
         <button
           ref={resRef}
           className={`frame reserved pick${result ? " pair" : ""}`}
-          style={{
-            left: resBase.x, top: resBase.y, width: resBase.w, height: resBase.h,
-            transform: `translate(${resT.x}px, ${resT.y}px) scale(${resT.sx}, ${resT.sy})`,
-          }}
+          style={resStyle}
           onClick={openPicker}
           disabled={result || phase === "busy"}
           aria-label={result ? "Your photograph" : "Choose a photo to hang"}
@@ -495,11 +519,11 @@ export default function App() {
           </div>
           {!photo && !result && (mobile
             ? <span className="choose">{drag ? "Release to hang" : "Choose a photo"}</span>
-            : <span className="choose"><b>{drag ? "Release to hang" : "Drop a photo"}</b><i>{drag ? "" : "or click to choose"}</i></span>)}
+            : <span className="choose"><b>{drag ? "Release to hang" : "Drop a photo"}</b><i>{drag ? "" : "or click, or paste"}</i></span>)}
           <span className={result ? "accn" : "reslabel"}>
             {result ? "your photograph" : photo ? "your photograph" : "reserved · your photograph"}
           </span>
-          {!result && !photo && size != null && (
+          {mobile && !result && !photo && size != null && (
             <span className="wallsize">{size.toLocaleString("en-US")} works on this wall</span>
           )}
         </button>
@@ -543,19 +567,19 @@ export default function App() {
             : <span className="accn">{match?.id}</span>}
         </div>
 
-        {/* resemblance mark — the seal's placard answers what it means */}
+        {/* resemblance mark — its meaning lives in the verdict, not on
+            a card parked over the paintings */}
         <div className={`mark${result ? " on" : ""}`}
           role="img" aria-label="resemblance — an automated estimate of visual closeness"
           style={{ left: markX - 20, top: markY - 20 }}>
           {match?.score ?? 0}
-          <span className="markplac">an automated estimate of visual closeness</span>
         </div>
 
         {/* one light pass when the twin lands — travels from the photograph
             to the work, once, then leaves */}
         {result && photo && match && (
           <div className="lightpass" style={{
-            left: px + pwEff / 2 - 240, top: pTop + ph / 2 - 240,
+            left: px + pwEff / 2 - 320, top: pTop + ph / 2 - 320,
             "--lx": `${ax + awEff / 2 - (px + pwEff / 2)}px`,
             "--ly": `${aTop + ah / 2 - (pTop + ph / 2)}px`,
           } as React.CSSProperties} />
@@ -581,13 +605,11 @@ export default function App() {
               <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId
                 ? (limited ? "its nearest neighbor" : `its nearest of ${size ? size.toLocaleString("en-US") : "many"} works`)
                 : "another resemblance"}</div>
+              <div className="verdict-note">an automated estimate of visual closeness</div>
               {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}
               {photoStats && why && (
                 <div className="why">
-                  <div className="whyline">
-                    <span className="whytag">the resemblance reads</span>
-                    {why.sentence}
-                  </div>
+                  <div className="whyline">{why.sentence}</div>
                   <div className="lensrow">
                     {(["palette", "composition", "figure"] as const).map(m => (
                       <button key={m} className={`lensbtn${lens === m ? " on" : ""}`}
@@ -610,12 +632,12 @@ export default function App() {
                             ? "a figure in your photo; none detected in the work"
                             : posePhoto === null
                               ? "a figure in the work; none detected in your photo"
-                              : "the red bones mark the figure the detector found"}
+                              : "the gold bones mark the figure the detector found"}
                     </div>
                   )}
                 </div>
               )}
-              <div className="actions" style={mobile ? { top: Math.max(140, 676 - capTop) } : undefined}>
+              <div className="actions" style={mobile ? { top: Math.max(140, 686 - capTop) } : undefined}>
                 <button onClick={reset}>hang another</button>
                 {runners.length > 0 && (
                   <button onClick={() => setShowRunners(s => !s)}>
@@ -634,7 +656,7 @@ export default function App() {
                       onPointerDown={e => onMiniDown(e, r)}
                       onClick={() => { if (Date.now() - suppressClick.current > 500) swapRunner(r); }}
                       aria-label={`Hang ${r.title} instead`}>
-                      <img src={displayUrl(r)} alt={r.title}
+                      <img src={displayUrl(r)} alt={r.title} draggable={false}
                         ref={el => { if (el?.complete && el.naturalWidth) el.classList.add("ld"); }}
                         onLoad={e => e.currentTarget.classList.add("ld")}
                         onError={() => setRunners(rs => rs.filter(x => x.id !== r.id))} />
@@ -673,6 +695,9 @@ export default function App() {
               <div className={modelPct > 0 && modelPct < 1 ? "fill" : "fill ind"} style={modelPct > 0 && modelPct < 1 ? { width: `${Math.round(modelPct * 100)}%` } : undefined} />
             </div>
           )}
+          {!mobile && !result && !photo && size != null && (
+            <div className="wallsize">{size.toLocaleString("en-US")} works on this wall</div>
+          )}
           {phase === "error" && (
             <p className={`act${mobile ? " tap" : ""}`}><button className="retry" onClick={openPicker}>try again</button></p>
           )}
@@ -684,7 +709,7 @@ export default function App() {
           <button className="sampleframe" onClick={useSample}
             style={mobile
               ? { left: resBase.x + resBase.w + 16, top: resBase.y + 116 }
-              : { left: resBase.x - 86, top: resBase.y + 235 }}
+              : { left: 1108, top: 366 }}
             aria-label="Hang the sample photograph">
             <span className="sf-mould"><span className="sf-mat"><img src="/sample.jpg" alt="" /></span></span>
             <span className="sf-cap">this snowdrop</span>
