@@ -25,7 +25,7 @@ async function q(sql) {
   return text;
 }
 
-const BATCH = 1000;
+const BATCH = 2000;
 const mine = `pictorial is null and hashtext(id) % ${SHARDS} = ${SHARD}`;
 for (let i = 0; ; i++) {
   const t = Date.now();

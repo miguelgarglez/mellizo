@@ -301,7 +301,7 @@ export default function App() {
   // so the twin hangs below the photograph's label, seal between.
   const pw = mobile ? 300 : 380;
   const ph0 = photo ? pw * (photo.h / photo.w) : pw * 0.75;
-  const ph = Math.min(ph0, mobile ? 200 : 330);
+  const ph = Math.min(ph0, mobile ? 150 : 330);
   const pwEff = ph < ph0 ? ph * (photo ? photo.w / photo.h : 4 / 3) : pw;
   const aw = mobile ? 300 : 340;
   // extreme aspect ratios (scrolls, panoramas) would frame as a sliver or a
@@ -309,23 +309,27 @@ export default function App() {
   const displayAr = Math.min(Math.max(matchAr, 0.3), 3.3);
   const isDetail = Math.abs(displayAr - matchAr) > 0.01;
   const ah0 = aw * displayAr;
-  const ah = Math.min(ah0, mobile ? 190 : 340);
+  const ah = Math.min(ah0, mobile ? 150 : 340);
   const awEff = ah < ah0 ? ah / displayAr : aw;
   const seamY = mobile ? 0 : 330;
   const pTop = mobile ? 56 : seamY - ph / 2 - 5;
   const aTop = mobile ? pTop + ph + 10 + 28 : seamY - ah / 2 - 5;
   const px = mobile ? (375 - pwEff) / 2 : 330;
   const ax = mobile ? (375 - awEff) / 2 : 755;
-  const pairCx = mobile ? 187.5 : (px + ax + awEff) / 2;
   // the pair hangs in a fixed-height slot: labels and caption never move,
   // regardless of the photo's or artwork's aspect ratio
   const slotH = 175;
-  const capTop = mobile ? aTop + ah + 10 + 14 : seamY + slotH + 46;
-  const capLeft = mobile ? Math.round((375 - 320) / 2) : pairCx - 185;
-  // the seal sits mid-gap: between the frames on desktop, between the
-  // photo's label and the twin on mobile
-  const markX = mobile ? 187.5 : px + pwEff + (ax - px - pwEff) / 2;
-  const markY = mobile ? pTop + ph + 10 + 14 : seamY;
+  const capTop = mobile ? aTop + ah + 10 + 30 : seamY + slotH + 46;
+  // the caption centers under the photograph + gap; the near-miss strip
+  // takes the twin's column — reading on the left, candidates on the right
+  const capLeft = mobile ? Math.round((375 - 320) / 2) : Math.round((px + ax) / 2) - 185;
+  // the twin's true x: ax slots the aw-column, the narrower effective frame
+  // centers inside it on desktop; on mobile ax already centers awEff
+  const twinX = mobile ? ax : ax + (aw - awEff) / 2;
+  // the seal sits mid-gap: between the frames on desktop; on mobile it
+  // stamps the top edge of the twin so the photo's label stays readable
+  const markX = mobile ? twinX + awEff / 2 : px + pwEff + (ax - px - pwEff) / 2;
+  const markY = mobile ? pTop + ph + 10 + 24 : seamY;
 
   // ----- frame positions: entry hang ↔ result rehang -----
   // Frames keep their entry left/top as the base position; the rehang moves
@@ -340,9 +344,10 @@ export default function App() {
     const gone = result && !r;
     const tx = result ? (r ? r.x : (p.x < 700 ? p.x - 1600 : p.x + 1600)) - p.x : 0;
     const ty = result && r ? r.y - p.y : 0;
-    const under = result && r != null &&
-      r.y + (r.w * r.art.h) / r.art.w + 10 > seamY + slotH &&
-      r.x < capLeft + capW && r.x + r.w > capLeft;
+    const under = result && r != null && showRunners &&
+      r.y + (r.w * r.art.h) / r.art.w + 10 > capTop - 30 &&
+      (r.x + r.w / 2 > (mobile ? 0 : Math.min(twinX - 30, capLeft - 20)) &&
+       r.x + r.w / 2 < (mobile ? 375 : Math.max(twinX + awEff + 30, capLeft + capW + 20)));
     // sizes ride the transform as scale around the frame's top left, so
     // the rehang pays no layout — left/top/width/height never animate
     const s = result && r ? r.w / p.w : 1;
@@ -358,7 +363,7 @@ export default function App() {
 
   // the twin rests off-view right, slides to its result spot
   const twinBase = { x: 1700, y: 220 };
-  const twinT = result ? { x: ax + (aw - awEff) / 2 - twinBase.x, y: aTop - twinBase.y } : { x: 0, y: 0 };
+  const twinT = result ? { x: twinX - twinBase.x, y: aTop - twinBase.y } : { x: 0, y: 0 };
 
   // one measured "why" for the sentence, the mat palette bands, the lenses
   const why = photoStats && match ? explain(
@@ -610,7 +615,7 @@ export default function App() {
                   )}
                 </div>
               )}
-              <div className="actions" style={mobile ? { top: Math.max(0, 640 - capTop) } : undefined}>
+              <div className="actions" style={mobile ? { top: Math.max(140, 676 - capTop) } : undefined}>
                 <button onClick={reset}>hang another</button>
                 {runners.length > 0 && (
                   <button onClick={() => setShowRunners(s => !s)}>
@@ -621,7 +626,7 @@ export default function App() {
               {showRunners && (() => {
                 const showScores = runners.some(r => r.score !== match.score);
                 return (
-                <div className="strip">
+                <div className="strip" style={mobile ? undefined : { left: twinX + awEff / 2 - capLeft, top: 30 }}>
                   <div className="striplabel">hang a near miss instead</div>
                   <div className="minis">
                   {runners.slice(0, mobile ? 3 : 4).map(r => (
@@ -679,7 +684,7 @@ export default function App() {
           <button className="sampleframe" onClick={useSample}
             style={mobile
               ? { left: resBase.x + resBase.w / 2 - 36, top: resBase.y + resBase.h + 64 }
-              : { left: resBase.x + resBase.w + 18, top: resBase.y + resBase.h + 8 }}
+              : { left: resBase.x - 42, top: resBase.y + resBase.h + 72 }}
             aria-label="Hang the sample photograph">
             <span className="sf-mould"><span className="sf-mat"><img src="/sample.jpg" alt="" /></span></span>
             <span className="sf-cap">this snowdrop</span>

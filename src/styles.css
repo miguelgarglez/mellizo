@@ -28,13 +28,18 @@ body {
    the salon hang steps out entirely so the reading has air */
 .room.m.phase-result .frame:not(.reserved):not(.twin):not(.gone) { opacity: 0; pointer-events: none; }
 /* lens controls are thumb targets, not desktop text marks */
-.room.m .lensrow { gap: 20px; }
-.room.m .lensbtn { padding: 14px 6px; min-height: 44px; font-size: calc(12px * var(--fz, 1)); }
-.room.m .strip { top: 0; position: static; transform: none; margin-top: 12px; }
+.room.m .lensrow { gap: 12px; flex-wrap: nowrap; }
+.room.m .lensbtn { padding: 14px 2px; min-height: 44px; font-size: calc(11px * var(--fz, 1)); letter-spacing: .12em; }
+.room.m .strip { position: static; transform: none; margin-top: 12px; }
 .room.m .minis { flex-wrap: wrap; }
+.room.m .strip .mini { width: 52px; }
+/* opening the picker trades the reading for the candidates — the why block
+   gives the strip its space so everything stays inside the fold */
+.room.m.strip-open .why { display: none; }
+.room.m .caption .actions { position: absolute; left: 0; right: 0; }
 .room.m .markplac { display: none; }
-/* the photograph's label steps left so the seal owns the gap alone */
-.room.m .reserved .accn { left: 0; transform: none; }
+/* the photograph's label steps left and quietens so the seal owns the gap alone */
+.room.m .reserved .accn { left: 0; transform: none; font-size: calc(9.5px * var(--fz, 1)); letter-spacing: .02em; }
 
 .room {
   position: relative; width: 100vw; height: 100dvh; overflow: hidden;
@@ -472,7 +477,7 @@ button.frame:disabled { cursor: default; }
 }
 /* pinned inside the caption's coordinates — swapping runners never shifts
    these buttons, whatever the lens stack above them holds */
-.caption .actions { position: absolute; left: 0; right: 0; top: 352px; display: flex; gap: 30px; justify-content: center; }
+.caption .actions { position: absolute; left: 0; right: 0; top: 240px; display: flex; gap: 30px; justify-content: center; }
 .caption .actions button {
   background: none; border: 0; font: inherit; font-size: calc(13px * var(--fz, 1)); color: var(--ink);
   text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--ink);
@@ -485,9 +490,9 @@ button.frame:disabled { cursor: default; }
 .caption .actions button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 
 /* ---------- near-miss strip ---------- */
-/* pinned to the caption's coordinates so it hangs inside the fold — the
-   strip is wall furniture, not document flow */
-.strip { position: absolute; left: 50%; top: 197px; transform: translateX(-50%); }
+/* the strip hangs under the twin (its position comes from the layout math)
+   so it always sits inside the fold — wall furniture, not document flow */
+.strip { position: absolute; transform: translateX(-50%); }
 .strip .striplabel {
   font-family: "IBM Plex Mono", monospace; font-size: calc(10px * var(--fz, 1)); letter-spacing: .05em;
   color: #5f584a; margin-bottom: 10px;
