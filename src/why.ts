@@ -6,7 +6,8 @@ import type { Pose } from "./pose";
 
 export type Why = {
   sentence: string;
-  shared: string[];          // hex colors that appear in both palettes
+  shared: string[];          // photo hexes with a twin color within distance 70
+  sharedArt: string[];       // twin hexes with a photo color within distance 70
   photoPal: string[];
   artPal: string[];
   photoSal: Sal | null;
@@ -58,6 +59,7 @@ export function explain(
   const photoPal = photo.pal ?? [];
   const artPal = art.pal ?? [];
   const shared = photoPal.filter(p => artPal.some(a => dist(p, a) < 70));
+  const sharedArt = artPal.filter(a => photoPal.some(p => dist(p, a) < 70));
 
   const parts: string[] = [];
 
@@ -113,6 +115,7 @@ export function explain(
   return {
     sentence,
     shared,
+    sharedArt,
     photoPal, artPal,
     photoSal: photo.sal ?? null,
     artSal: art.sal ?? null,

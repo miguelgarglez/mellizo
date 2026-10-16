@@ -35,16 +35,17 @@ export const ENTRY_MOBILE: [number, number, number, number, boolean?][] = [
 ];
 
 // result hang — the wall after it rearranges; works pushed to the perimeter
+// so the pair owns the room (x<400 steps 48 left, x>1000 steps 48 right)
 export const RESULT_DESKTOP: [number, number, number, number, boolean?][] = [
-  [11, -140, 60, 400, true],
-  [1, 275, -115, 170],
-  [9, -40, 430, 220],
-  [18, 200, 530, 140],
-  [10, 380, 715, 100],
-  [6, 1180, 50, 230],
-  [3, 1290, 300, 150],
-  [8, 1020, 660, 190],
-  [15, 1250, 580, 180],
+  [11, -188, 60, 400, true],
+  [1, 227, -115, 170],
+  [9, -88, 430, 220],
+  [18, 152, 530, 140],
+  [10, 332, 715, 100],
+  [6, 1228, 50, 230],
+  [3, 1338, 300, 150],
+  [8, 1068, 660, 190],
+  [15, 1298, 580, 180],
 ];
 
 export const RESULT_MOBILE: [number, number, number, number, boolean?][] = [

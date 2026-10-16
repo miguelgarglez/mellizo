@@ -19,7 +19,7 @@ export function Lens({ mode, sal, pose }: {
         <ellipse className="lens-mass"
           cx={sal.cx} cy={sal.cy}
           rx={Math.max(0.05, sal.sp * 0.5)} ry={Math.max(0.05, sal.sp * 0.5)} />
-        <circle className="lens-c" cx={sal.cx} cy={sal.cy} r={0.01} />
+        <circle className="lens-c" cx={sal.cx} cy={sal.cy} r={0.024} />
       </svg>
     );
   }
