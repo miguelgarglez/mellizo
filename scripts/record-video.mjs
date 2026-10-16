@@ -37,6 +37,13 @@ const shoot = async () => {
   mark("result phase");
   await p.waitForTimeout(4200); // reveal lands, mark stamps, caption settles
   mark("settled");
+  await p.locator(".lensbtn", { hasText: /composition/i }).click();
+  mark("composition lens");
+  await p.waitForTimeout(2600);
+  await p.locator(".lensbtn", { hasText: /palette/i }).click();
+  mark("palette lens");
+  await p.waitForTimeout(2600);
+  await p.locator(".lensbtn", { hasText: /palette/i }).click(); // lens off
   await p.getByRole("button", { name: "near misses" }).click();
   mark("strip open");
   await p.waitForTimeout(1600);
