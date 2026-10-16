@@ -301,7 +301,7 @@ export default function App() {
   // so the twin hangs below the photograph's label, seal between.
   const pw = mobile ? 300 : 380;
   const ph0 = photo ? pw * (photo.h / photo.w) : pw * 0.75;
-  const ph = Math.min(ph0, mobile ? 160 : 330);
+  const ph = Math.min(ph0, mobile ? 200 : 330);
   const pwEff = ph < ph0 ? ph * (photo ? photo.w / photo.h : 4 / 3) : pw;
   const aw = mobile ? 300 : 340;
   // extreme aspect ratios (scrolls, panoramas) would frame as a sliver or a
@@ -309,11 +309,11 @@ export default function App() {
   const displayAr = Math.min(Math.max(matchAr, 0.3), 3.3);
   const isDetail = Math.abs(displayAr - matchAr) > 0.01;
   const ah0 = aw * displayAr;
-  const ah = Math.min(ah0, mobile ? 150 : 340);
+  const ah = Math.min(ah0, mobile ? 190 : 340);
   const awEff = ah < ah0 ? ah / displayAr : aw;
   const seamY = mobile ? 0 : 330;
-  const pTop = mobile ? 56 : seamY - ph / 2 - 5;
-  const aTop = mobile ? pTop + ph + 38 : seamY - ah / 2 - 5;
+  const pTop = mobile ? 52 : seamY - ph / 2;
+  const aTop = mobile ? pTop + ph + 38 : seamY - ah / 2;
   // the gap carries the seal: 72px on desktop so wax gets wall on both
   // sides; the pair block stays centered whatever the aspect ratios
   const gap = 72;
@@ -322,17 +322,18 @@ export default function App() {
   // the pair hangs in a fixed-height slot: labels and caption never move,
   // regardless of the photo's or artwork's aspect ratio
   const slotH = 175;
-  const capTop = mobile ? aTop + ah + 10 + 30 : seamY + slotH + 46;
+  const capTop = mobile ? aTop + ah + 18 : seamY + slotH + 46;
   // the caption centers under the photograph + gap; the near-miss strip
   // takes the twin's column — reading on the left, candidates on the right
-  const capLeft = mobile ? Math.round((375 - 320) / 2) : Math.round((px + ax) / 2) - 185;
+  const capLeft = mobile ? Math.round((375 - 300) / 2) : Math.round((px + ax) / 2) - 185;
   // ax is the twin's actual left rail — the gap between the frames'
   // edges is exactly `gap`, and mid-gap is the seal's home
   const twinX = ax;
   // the seal sits mid-gap: between the frames on desktop; on mobile it
-  // stamps the top edge of the twin so the photo's label stays readable
+  // beads the 38px of wall between the stacked frames, 1px on each rail —
+  // the photograph's label steps left of it, right-aligned against the wax
   const markX = mobile ? twinX + awEff / 2 : px + pwEff + (ax - px - pwEff) / 2;
-  const markY = mobile ? pTop + ph + 56 : seamY;
+  const markY = mobile ? pTop + ph + 19 : seamY;
 
   // ----- frame positions: entry hang ↔ result rehang -----
   // Frames keep their entry left/top as the base position; the rehang moves
@@ -371,7 +372,7 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, [result]);
   const resStyle: React.CSSProperties = result
-    ? { left: px, top: pTop, width: pwEff, height: ph + 10,
+    ? { left: px, top: pTop, width: pwEff, height: ph,
         transform: resFlip ? `translate(${resBase.x - px}px, ${resBase.y - pTop}px)` : "translate(0px, 0px)",
         transition: resFlip ? "none" : undefined }
     : { left: resBase.x, top: resBase.y, width: resBase.w, height: resBase.h,
@@ -532,7 +533,7 @@ export default function App() {
         <div
           className={`frame twin${result ? "" : " gone"}`}
           style={{
-            left: twinBase.x, top: twinBase.y, width: awEff, height: ah + 10,
+            left: twinBase.x, top: twinBase.y, width: awEff, height: ah,
             transform: `translate(${twinT.x}px, ${twinT.y}px)`,
           }}
           aria-hidden={!result}
@@ -603,7 +604,9 @@ export default function App() {
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
               {isDetail && <div className="detail-note">an unusually shaped work — shown as a detail</div>}
               <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId
-                ? (limited ? "its nearest neighbor" : `its nearest of ${size ? size.toLocaleString("en-US") : "many"} works`)
+                ? (limited ? "its nearest neighbor" : mobile
+                  ? `nearest of ${size ? size.toLocaleString("en-US") : "many"}`
+                  : `its nearest of ${size ? size.toLocaleString("en-US") : "many"} works`)
                 : "another resemblance"}</div>
               <div className="verdict-note">an automated estimate of visual closeness</div>
               {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}

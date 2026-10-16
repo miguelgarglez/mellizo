@@ -37,10 +37,17 @@ body {
    gives the strip its space so everything stays inside the fold */
 .room.m.strip-open .why { display: none; }
 .room.m .caption .actions { position: absolute; left: 0; right: 0; }
-.room.m .lensrow { margin-top: 8px; }
-.room.m .caption .verdict-note { margin-top: 2px; }
-/* the photograph's label steps left and quietens so the seal owns the gap alone */
-.room.m .reserved .accn { left: 0; transform: none; font-size: calc(9.5px * var(--fz, 1)); letter-spacing: .02em; }
+.room.m .lensrow { margin-top: 4px; }
+.room.m .caption .title { font-size: calc(22px * var(--fz, 1)); -webkit-line-clamp: 1; }
+.room.m .caption .who { margin-top: 3px; font-size: calc(12.5px * var(--fz, 1)); }
+/* the verdict reserves two lines on desktop so runner swaps don't shift the
+   pinned actions; on the phone the actions are absolutely pinned already */
+.room.m .caption .verdict { margin-top: 8px; min-height: 0; }
+.room.m .caption .verdict-note { margin-top: 0; }
+.room.m .why { margin-top: 10px; }
+.room.m .whyline { font-size: calc(14.5px * var(--fz, 1)); line-height: 1.38; }
+/* the photograph's label ends 6px short of the wax that beads the gap */
+.room.m .reserved.pair .accn { left: auto; right: calc(50% + 26px); transform: none; font-size: calc(9.5px * var(--fz, 1)); letter-spacing: .02em; }
 
 .room {
   position: relative; width: 100vw; height: 100dvh; overflow: hidden;
