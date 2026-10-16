@@ -3,6 +3,9 @@ export type Art = {
   img: string; w: number; h: number; objectUrl?: string;
 };
 
+// measured at embed time (scripts/embed-v2.mjs) — the explainer's evidence
+export type Sal = { cx: number; cy: number; sp: number; l: number; w: number };
+
 // Works hung on the entry wall — all Met open access.
 export const WALL_ART: Art[] = [
   { id: "met-435809", objectUrl: "https://www.metmuseum.org/art/collection/search/435809", title: "The Harvesters", artist: "Pieter Bruegel the Elder", date: "1565", img: "https://images.metmuseum.org/CRDImages/ep/web-large/DP119115.jpg", w: 600, h: 442 },
@@ -28,4 +31,9 @@ export const WALL_ART: Art[] = [
   { id: "met-360716", objectUrl: "https://www.metmuseum.org/art/collection/search/360716", title: "Hands and Arms", artist: "Wenceslaus Hollar", date: "1644–52", img: "https://images.metmuseum.org/CRDImages/dp/web-large/DP823729.jpg", w: 600, h: 224 },
 ];
 
-export type Match = Art & { score: number };
+export type Match = Art & {
+  score: number;
+  source?: string;
+  pal?: string[] | null;
+  sal?: Sal | null;
+};

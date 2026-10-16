@@ -90,6 +90,80 @@ body {
 .frame .mat .broken button:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 .frame img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.93) contrast(1.01); transition: filter .7s ease, opacity .7s ease; }
 .reserved .mat img { object-fit: contain; }
+
+/* ---------- explainer lenses ---------- */
+/* the wrap hugs the painted image, so lens coordinates (0..1 of the image)
+   land exactly on it regardless of letterboxing */
+.lensbox { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.lenswrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 100%; }
+.twin .lenswrap { width: 100%; height: 100%; }
+.twin .lenswrap img { width: 100%; height: 100%; object-fit: cover; }
+.lenswrap img { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.twin .lenswrap img { width: 100%; height: 100%; }
+svg.lens {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+.lens-mass {
+  fill: rgba(196, 52, 43, .14); stroke: var(--red); stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke; stroke-dasharray: 7 5;
+  animation: lensIn .45s ease both;
+}
+.lens-c { fill: var(--red); animation: lensIn .45s ease both; }
+.lens-bone {
+  stroke: var(--red); stroke-width: 2.5px; stroke-linecap: round;
+  vector-effect: non-scaling-stroke; animation: lensIn .5s ease both;
+}
+.lens-head {
+  fill: none; stroke: var(--red); stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke; animation: lensIn .55s ease both;
+}
+@keyframes lensIn {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lens-mass, .lens-c, .lens-bone, .lens-head { animation: none; }
+}
+
+/* ---------- the why block ---------- */
+.why { margin-top: 14px; }
+.whyline {
+  font-family: "Fraunces", serif; font-style: italic;
+  font-size: calc(14px * var(--fz, 1)); line-height: 1.45; color: var(--ink);
+}
+.whytag {
+  display: block; font-family: "Inter", sans-serif; font-style: normal;
+  font-size: calc(9px * var(--fz, 1)); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-soft); margin-bottom: 3px;
+}
+.lensrow { display: flex; gap: 5px; justify-content: center; margin-top: 8px; }
+.lensbtn {
+  font-family: "Inter", sans-serif; font-size: calc(10px * var(--fz, 1));
+  letter-spacing: .09em; color: var(--ink-soft);
+  background: transparent; border: 1px solid var(--hairline);
+  padding: 4px 10px; cursor: pointer;
+  transition: color .25s ease, border-color .25s ease, background .25s ease;
+}
+.lensbtn:hover { color: var(--ink); border-color: var(--ink-soft); }
+.lensbtn.on { color: var(--label); background: var(--ink); border-color: var(--ink); }
+.lensbtn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.pal-rows { margin-top: 9px; display: flex; flex-direction: column; gap: 4px; }
+.pal-row { display: flex; align-items: center; gap: 5px; justify-content: center; }
+.pal-row span {
+  font-size: calc(9px * var(--fz, 1)); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-soft); width: 34px; text-align: right; flex: none;
+}
+.pal-row em { font-size: calc(10px * var(--fz, 1)); color: var(--ink-soft); font-style: italic; }
+.sw {
+  width: 15px; height: 15px; display: inline-block;
+  box-shadow: inset 0 0 0 1px rgba(24, 20, 14, .15);
+}
+.sw.shared { box-shadow: inset 0 0 0 1px rgba(24,20,14,.15), 0 0 0 2px var(--label), 0 0 0 3.5px var(--red); }
+.lens-note {
+  margin-top: 8px; font-size: calc(10.5px * var(--fz, 1));
+  color: var(--ink-soft); font-style: italic; line-height: 1.4;
+}
 .frame .accn {
   position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
   font-family: "IBM Plex Mono", monospace; font-size: calc(11.5px * var(--fz, 1)); letter-spacing: .04em;

@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { WebHaptics } from "web-haptics";
 import { WALL_ART, type Match } from "./data";
 import { ENTRY_DESKTOP, ENTRY_MOBILE, RESULT_DESKTOP, RESULT_MOBILE, place } from "./hang";
-import { findMatches } from "./match";
+import { corpusSize, findMatches } from "./match";
+import { displayUrl, pixelsUrl, stats, type ImgStats } from "./inspect";
+import { explain } from "./why";
+import { Lens, type LensMode } from "./lens";
+import { poseOf, type Pose } from "./pose";
 import { mobileLayout, stageScrolls } from "./viewport";
 
 type Phase = "idle" | "busy" | "result" | "error";
@@ -59,9 +63,19 @@ export default function App() {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const swapRef = useRef(0);
   const capRef = useRef<HTMLDivElement>(null);
+  // the explainer: measured stats for the photo, overlay mode, lazy poses
+  const [photoStats, setPhotoStats] = useState<ImgStats | null>(null);
+  const [lens, setLens] = useState<LensMode>(null);
+  const [posePhoto, setPosePhoto] = useState<Pose | null | undefined>(undefined);
+  const [poseArt, setPoseArt] = useState<Pose | null | undefined>(undefined);
+  const [poseBusy, setPoseBusy] = useState(false);
+  const [size, setSize] = useState<number | null>(null);
 
   const result = phase === "result";
   const openPicker = () => inputRef.current?.click();
+
+  // the real collection size for the verdict line
+  useEffect(() => { corpusSize().then(setSize); }, []);
 
   // release the object URL on unmount too
   useEffect(() => () => { if (photoRef.current) URL.revokeObjectURL(photoRef.current.url); }, []);
@@ -82,6 +96,11 @@ export default function App() {
     setDlDone(false);
     setWinnerId(null);
     setFailedSrc(null);
+    setPhotoStats(null);
+    setLens(null);
+    setPosePhoto(undefined);
+    setPoseArt(undefined);
+    setPoseBusy(false);
     let url: string | null = null;
     try {
       setPhase("busy");
@@ -92,6 +111,9 @@ export default function App() {
       await img.decode();
       if (job !== jobRef.current) return;
       setPhotoTracked({ url, w: img.naturalWidth, h: img.naturalHeight });
+      // measure the photo for the explainer while the model warms — the
+      // photo is same-origin, so reading its pixels is free and private
+      try { setPhotoStats(stats(img)); } catch { setPhotoStats(null); }
       url = null;
 
       const { warmup, ready, embedImage } = await import("./clip");
@@ -122,7 +144,7 @@ export default function App() {
           const t = new Image();
           t.onload = () => resolve(t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3);
           t.onerror = () => { if (job === jobRef.current) setFailedSrc(matches[0].img); resolve(4 / 3); };
-          t.src = matches[0].img;
+          t.src = displayUrl(matches[0]);
         }),
         // a slow work must not hold the wall hostage — the <img> still
         // paints (or fails honestly) when it arrives
@@ -150,7 +172,7 @@ export default function App() {
       // the live region tells the room who answered
       setStatus(`Its twin hangs beside it — ${matches[0].title}, resemblance ${matches[0].score}`);
       // warm the near-miss thumbs so the strip opens with paint, not black
-      matches.slice(1, 5).forEach(m => { const t = new Image(); t.src = m.img; });
+      matches.slice(1, 5).forEach(m => { const t = new Image(); t.src = displayUrl(m); });
       // the mark stamps late in the reveal — confirm exactly when it lands
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
       setTimeout(() => haptics.trigger("success"), reduced ? 0 : 1400);
@@ -232,6 +254,8 @@ export default function App() {
       if (n !== swapRef.current) return;
       setMatchAr(r.w && r.h ? r.h / r.w : (t.naturalWidth ? t.naturalHeight / t.naturalWidth : 4 / 3));
       setFailedSrc(null);
+      // a new twin means the old figure reading no longer applies
+      setPoseArt(undefined);
       setMatch(prev => {
         if (!prev) return r;
         // stable order: the demoted winner joins the end, others stay put
@@ -246,8 +270,30 @@ export default function App() {
       // a near miss that can't paint gets skipped, not hung as a blank mat
       setRunners(rs => rs.filter(x => x.id !== r.id));
     };
-    t.src = r.img;
+    t.src = displayUrl(r);
   }, []);
+
+  // the explainer layers: palette lives in the caption, composition and
+  // figure draw on the frames themselves
+  const toggleLens = useCallback(async (m: LensMode) => {
+    if (lens === m) { setLens(null); return; }
+    setLens(m);
+    if (m !== "figure" || posePhoto !== undefined) return;
+    setPoseBusy(true);
+    try {
+      const pImg = document.querySelector<HTMLImageElement>(".reserved .mat img");
+      setPosePhoto(pImg ? await poseOf(pImg) : null);
+      if (match) {
+        const tImg = new Image();
+        tImg.crossOrigin = "anonymous";
+        tImg.src = pixelsUrl(match);
+        try {
+          await tImg.decode();
+          setPoseArt(await poseOf(tImg));
+        } catch { setPoseArt(null); }
+      }
+    } finally { setPoseBusy(false); }
+  }, [lens, posePhoto, match]);
 
   // ----- pair geometry (result) -----
   const pw = mobile ? 160 : 300;
@@ -346,7 +392,14 @@ export default function App() {
         >
           <div className="moulding">
             <div className="mat" style={photo ? { padding: "4%" } : undefined}>
-              {photo && <img src={photo.url} alt="Your photograph" />}
+              {photo && (
+                <div className="lensbox">
+                  <div className="lenswrap">
+                    <img src={photo.url} alt="Your photograph" />
+                    <Lens mode={lens} sal={photoStats?.sal} pose={posePhoto} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           {!photo && !result && (mobile
@@ -373,13 +426,18 @@ export default function App() {
                     <span>the work stayed in storage</span>
                     <button type="button" onClick={() => setFailedSrc(null)}>ask again</button>
                   </div>
-                : <img key={match.id} src={match.img} alt={match.title} onError={() => setFailedSrc(match.img)} />)}
+                : <div className="lensbox">
+                    <div className="lenswrap">
+                      <img key={match.id} src={displayUrl(match)} alt={match.title} onError={() => setFailedSrc(match.img)} />
+                      {!isDetail && <Lens mode={lens} sal={match.sal} pose={poseArt} />}
+                    </div>
+                  </div>)}
             </div>
             {swappedAt > 0 && <div className="flashring" key={swappedAt} />}
           </div>
           {match?.objectUrl
             ? <a className="accn link" href={match.objectUrl} target="_blank" rel="noreferrer" tabIndex={result ? 0 : -1}>
-                {match.id.startsWith("cle-") ? "cleveland museum of art" : match.id.replace("met-", "met #")} ↗</a>
+                {{ cle: "cleveland museum of art", nga: "national gallery of art", aic: "art institute of chicago" }[match.source ?? ""] ?? match.id.replace("met-", "met #")} ↗</a>
             : <span className="accn">{match?.id}</span>}
         </div>
 
@@ -402,10 +460,60 @@ export default function App() {
               <div className="who">{[match.artist, match.date].filter(Boolean).join(", ")}</div>
               {isDetail && <div className="detail-note">an unusually shaped work — shown as a detail</div>}
               <div className="verdict">resemblance <b>{match.score}</b> · {match.id === winnerId
-                ? (limited ? "its nearest neighbor" : "its nearest of 22,099 works")
+                ? (limited ? "its nearest neighbor" : `its nearest of ${size ? size.toLocaleString("en-US") : "many"} works`)
                 : "another resemblance"}</div>
               <div className="score-note">an automated estimate of visual closeness — it reads surfaces, not meaning</div>
               {limited && <div className="limited">pocket corpus · twenty-one works answered</div>}
+              {photoStats && (
+                <div className="why">
+                  <div className="whyline">
+                    <span className="whytag">the resemblance reads</span>
+                    {explain(
+                      { pal: photoStats.pal, sal: photoStats.sal, ar: photo ? photo.w / photo.h : 1 },
+                      { pal: match.pal ?? null, sal: match.sal ?? null, ar: matchAr },
+                      { photo: posePhoto ?? null, art: poseArt ?? null },
+                    ).sentence}
+                  </div>
+                  <div className="lensrow">
+                    {(["palette", "composition", "figure"] as const).map(m => (
+                      <button key={m} className={`lensbtn${lens === m ? " on" : ""}`}
+                        onClick={() => toggleLens(m)}
+                        aria-pressed={lens === m}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                  {lens === "palette" && (() => {
+                    const w = explain(
+                      { pal: photoStats.pal, sal: photoStats.sal, ar: photo ? photo.w / photo.h : 1 },
+                      { pal: match.pal ?? null, sal: match.sal ?? null, ar: matchAr });
+                    return (
+                      <div className="pal-rows">
+                        <div className="pal-row"><span>photo</span>
+                          {w.photoPal.map(c => <i key={c} className={`sw${w.shared.includes(c) ? " shared" : ""}`} style={{ background: c }} title={c} />)}
+                        </div>
+                        <div className="pal-row"><span>twin</span>
+                          {w.artPal.length ? w.artPal.map(c => <i key={c} className={`sw${w.shared.includes(c) ? " shared" : ""}`} style={{ background: c }} title={c} />)
+                            : <em>no palette measured for this work</em>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {lens === "figure" && (
+                    <div className="lens-note">
+                      {poseBusy
+                        ? "reading the figures…"
+                        : posePhoto === null && poseArt === null
+                          ? "no figure found on either side — the match lives elsewhere"
+                          : poseArt === null
+                            ? "a figure in your photo; none detected in the work"
+                            : posePhoto === null
+                              ? "a figure in the work; none detected in your photo"
+                              : "the red bones mark the figure the detector found"}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="actions">
                 <button onClick={reset}>hang another</button>
                 {runners.length > 0 && (
@@ -422,7 +530,7 @@ export default function App() {
                   <div className="minis">
                   {runners.slice(0, mobile ? 3 : 4).map(r => (
                     <button key={r.id} className="mini" onClick={() => swapRunner(r)} aria-label={`Hang ${r.title} instead`}>
-                      <img src={r.img} alt={r.title}
+                      <img src={displayUrl(r)} alt={r.title}
                         ref={el => { if (el?.complete && el.naturalWidth) el.classList.add("ld"); }}
                         onLoad={e => e.currentTarget.classList.add("ld")}
                         onError={() => setRunners(rs => rs.filter(x => x.id !== r.id))} />

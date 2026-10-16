@@ -5,6 +5,9 @@ import { WALL_ART, type Match } from "./data";
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// staging hook: a dev build can aim at artworks_next while the live corpus
+// still answers production
+const RPC = (import.meta.env.VITE_MATCH_RPC as string | undefined) ?? "match_artworks";
 
 // Measured on the live corpus (15 diverse photos through the production q8
 // model): a photo's nearest artwork lands at cosine ~0.55-0.76, and only a
@@ -24,10 +27,33 @@ const degenerate = (r: any) =>
   (Math.min(r.img_w, r.img_h) < 128 ||
     Math.max(r.img_w / r.img_h, r.img_h / r.img_w) > 4);
 
+export async function corpusSize(): Promise<number | null> {
+  if (!(URL_ && KEY)) return null;
+  try {
+    const res = await fetch(`${URL_}/rest/v1/rpc/corpus_size`, {
+      method: "POST",
+      headers: {
+        apikey: KEY,
+        Authorization: `Bearer ${KEY}`,
+        "Content-Type": "application/json",
+        "Content-Profile": "mellizo",
+        "Accept-Profile": "mellizo",
+      },
+      body: "{}",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const n = await res.json();
+      return Number.isFinite(n) ? n : null;
+    }
+  } catch { /* stay silent — the line just falls back */ }
+  return null;
+}
+
 export async function findMatches(v: number[], count = 5): Promise<{ list: Match[]; limited: boolean }> {
   if (URL_ && KEY) {
     try {
-      const res = await fetch(`${URL_}/rest/v1/rpc/match_artworks`, {
+      const res = await fetch(`${URL_}/rest/v1/rpc/${RPC}`, {
         method: "POST",
         headers: {
           apikey: KEY,
@@ -53,13 +79,16 @@ export async function findMatches(v: number[], count = 5): Promise<{ list: Match
           return {
             limited: false,
             list: ok.map(r => ({
-              id: r.id, title: String(r.title ?? ""), artist: String(r.artist ?? ""),
+              id: r.id, source: String(r.source ?? r.id.split("-")[0]),
+              title: String(r.title ?? ""), artist: String(r.artist ?? ""),
               date: String(r.date ?? ""),
               img: r.thumb_url || r.image_url,
               objectUrl: typeof r.object_url === "string" ? r.object_url : "",
               // 0 marks unmeasured: the app falls back to decoding the image
               w: Number.isFinite(r.img_w) ? r.img_w : 0,
               h: Number.isFinite(r.img_h) ? r.img_h : 0,
+              pal: Array.isArray(r.pal) ? r.pal.map(String) : null,
+              sal: r.sal && typeof r.sal === "object" ? r.sal as Match["sal"] : null,
               score: resemblance(1 - r.distance),
             })),
           };

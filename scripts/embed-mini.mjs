@@ -7,8 +7,8 @@ const works = [...dataSrc.matchAll(/id: "(met-[^"]+)"[\s\S]*?img: "([^"]+)"/g)]
   .map(m => ({ id: m[1], img: m[2] }));
 console.log(`${works.length} wall works`);
 
-const processor = await AutoProcessor.from_pretrained("Xenova/clip-vit-base-patch16");
-const model = await CLIPVisionModelWithProjection.from_pretrained("Xenova/clip-vit-base-patch16");
+const processor = await AutoProcessor.from_pretrained("Xenova/clip-vit-base-patch32");
+const model = await CLIPVisionModelWithProjection.from_pretrained("Xenova/clip-vit-base-patch32", { dtype: "q8" });
 
 const out = [];
 for (const w of works) {

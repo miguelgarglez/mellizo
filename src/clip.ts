@@ -4,7 +4,10 @@ import { AutoProcessor, CLIPVisionModelWithProjection, RawImage, env } from "@hu
 
 env.allowLocalModels = false;
 
-const MODEL_ID = "Xenova/clip-vit-base-patch16";
+// Round 3: patch32. Same weights family as patch16 but 4x fewer input
+// patches — ~4x faster per embed on both the visitor's device and the M4
+// that rebuilt the ~200k-work corpus. Must match scripts/embed-v2.mjs.
+const MODEL_ID = "Xenova/clip-vit-base-patch32";
 let procP: Promise<any> | null = null;
 let modelP: Promise<any> | null = null;
 
