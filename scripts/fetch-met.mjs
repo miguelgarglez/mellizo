@@ -7,7 +7,7 @@ import readline from "node:readline";
 const CSV = new URL("../data/MetObjects.csv", import.meta.url).pathname;
 const OUT = new URL("../data/catalog-met.jsonl", import.meta.url).pathname;
 const TARGET = parseInt(process.argv[2] ?? "4000", 10);
-const CONCURRENCY = 3;
+const CONCURRENCY = parseInt(process.env.MET_CONC ?? "3", 10);
 
 const WANTED_NAMES = new Set([
   "Painting", "Drawing", "Print", "Photograph", "Watercolor",

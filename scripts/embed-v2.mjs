@@ -3,6 +3,7 @@
 // Resumable: appends {id,w,h,pal,sal,v} to data/embeddings-v2.jsonl.
 // usage: node scripts/embed-v2.mjs
 import fs from "node:fs";
+import crypto from "node:crypto";
 import readline from "node:readline";
 import { AutoProcessor, CLIPVisionModelWithProjection, RawImage } from "@huggingface/transformers";
 
@@ -28,6 +29,10 @@ for (const f of fs.readdirSync(new URL("../data/", import.meta.url).pathname)) {
     if (l.trim()) { try { done.add(JSON.parse(l).id); } catch { } }
 }
 
+const SHARDS = parseInt(process.env.EMBED_SHARDS ?? "1", 10);
+const SHARD = parseInt(process.env.EMBED_SHARD ?? "0", 10);
+const shardOf = id => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h) % SHARDS; };
+
 const rows = [];
 for (const f of SOURCES) {
   if (!fs.existsSync(f)) continue;
@@ -35,7 +40,7 @@ for (const f of SOURCES) {
   for await (const l of rl) if (l.trim()) {
     try {
       const r = JSON.parse(l);          // a fetcher may still be appending
-      if (r.id && !done.has(r.id)) rows.push(r);
+      if (r.id && !done.has(r.id) && shardOf(r.id) === SHARD) rows.push(r);
     } catch { /* torn tail line: a later pass catches it */ }
   }
 }
@@ -53,10 +58,21 @@ const t0 = Date.now();
 // artic.edu's WAF rejects requests without a familiar Referer
 const refererFor = r => r.id.startsWith("aic-") ? "https://www.artic.edu/" : undefined;
 
-// Wikimedia's thumbor rate-limits bursts: the first embed pass lost ~28k
-// met-wd rows to instant 429s. Commons gets a small in-flight budget and
-// each fetch gets one retry with a pause.
-const HOST_CAP = { "commons.wikimedia.org": 3 };
+// Wikimedia's thumbor rate-limits bursts on commons.wikimedia.org
+// (Special:FilePath redirects through it). The same render lives on the
+// upload/thumb CDN at fixed-width buckets — 500px works — in a much more
+// permissive rate pool. Rewrite FilePath URLs onto it.
+const thumbor = url => {
+  try {
+    const u = new URL(url);
+    if (u.host !== "commons.wikimedia.org" || !u.pathname.includes("Special:FilePath/")) return url;
+    const fn = decodeURIComponent(u.pathname.split("Special:FilePath/")[1]).replace(/ /g, "_");
+    const md5 = crypto.createHash("md5").update(fn).digest("hex");
+    return `https://upload.wikimedia.org/wikipedia/commons/thumb/${md5[0]}/${md5.slice(0, 2)}/${encodeURIComponent(fn)}/500px-${encodeURIComponent(fn)}`;
+  } catch { return url; }
+};
+
+const HOST_CAP = { "commons.wikimedia.org": 3, "upload.wikimedia.org": 8 };
 const flying = new Map();
 async function slot(host) {
   const cap = HOST_CAP[host];
@@ -70,7 +86,8 @@ function free(host) {
 }
 
 async function dl(r) {
-  const host = (() => { try { return new URL(r.thumb_url).host; } catch { return ""; } })();
+  const url = thumbor(r.thumb_url);
+  const host = (() => { try { return new URL(url).host; } catch { return ""; } })();
   await slot(host);
   try {
     for (let a = 0; a < 2; a++) {
@@ -78,7 +95,7 @@ async function dl(r) {
         const headers = { "User-Agent": "mellizo-corpus/1.0 (open corpus research)" };
         const ref = refererFor(r);
         if (ref) headers.Referer = ref;
-        const res = await fetch(r.thumb_url, { headers, signal: AbortSignal.timeout(25000) });
+        const res = await fetch(url, { headers, signal: AbortSignal.timeout(25000) });
         if (res.status === 429 || res.status >= 500) {
           await new Promise(x => setTimeout(x, 1500 + a * 3000));
           continue;
