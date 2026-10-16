@@ -329,7 +329,7 @@ export default function App() {
   // the seal sits mid-gap: between the frames on desktop; on mobile it
   // stamps the top edge of the twin so the photo's label stays readable
   const markX = mobile ? twinX + awEff / 2 : px + pwEff + (ax - px - pwEff) / 2;
-  const markY = mobile ? pTop + ph + 10 + 24 : seamY;
+  const markY = mobile ? pTop + ph + 10 + 40 : seamY;
 
   // ----- frame positions: entry hang ↔ result rehang -----
   // Frames keep their entry left/top as the base position; the rehang moves
