@@ -4,10 +4,12 @@ import { AutoProcessor, CLIPVisionModelWithProjection, RawImage, env } from "@hu
 
 env.allowLocalModels = false;
 
-// Round 3: patch32. Same weights family as patch16 but 4x fewer input
-// patches — ~4x faster per embed on both the visitor's device and the M4
-// that rebuilt the ~200k-work corpus. Must match scripts/embed-v2.mjs.
-const MODEL_ID = "Xenova/clip-vit-base-patch32";
+// Round 3, revised: patch16. patch32 was ~4x faster per embed, but a blind
+// test showed it surfacing weaker twins — judge-preferred works sat at rank
+// >40 under patch32 while ranking top under patch16. Finer patches win on
+// resemblance; the visitor embeds one image, so the cost is invisible.
+// Must match scripts/embed-v2.mjs (EMBED_MODEL).
+const MODEL_ID = "Xenova/clip-vit-base-patch16";
 let procP: Promise<any> | null = null;
 let modelP: Promise<any> | null = null;
 

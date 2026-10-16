@@ -15,7 +15,7 @@ const SOURCES = (process.env.EMBED_SOURCES?.split(",") ?? [
 ]).map(f => new URL(`../data/${f}`, import.meta.url).pathname);
 const BATCH = 8;
 const AHEAD = 28;          // download lookahead pool
-const MODEL = "Xenova/clip-vit-base-patch32";
+const MODEL = process.env.EMBED_MODEL ?? "Xenova/clip-vit-base-patch32";
 
 const degenerate = (w, h) =>
   Math.min(w, h) < 128 || Math.max(w / h, h / w) > 4;
@@ -23,8 +23,9 @@ const degenerate = (w, h) =>
 // done-set: every embeddings-*.jsonl counts, so parallel workers on
 // disjoint sources never repeat each other's work
 const done = new Set();
+const DONE_RE = new RegExp(`^${process.env.EMBED_DONE_PREFIX ?? "embeddings-"}.*\\.jsonl$`);
 for (const f of fs.readdirSync(new URL("../data/", import.meta.url).pathname)) {
-  if (!/^embeddings-.*\.jsonl$/.test(f)) continue;
+  if (!DONE_RE.test(f)) continue;
   for (const l of fs.readFileSync(new URL(`../data/${f}`, import.meta.url).pathname, "utf8").split("\n"))
     if (l.trim()) { try { done.add(JSON.parse(l).id); } catch { } }
 }

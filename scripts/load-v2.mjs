@@ -16,10 +16,11 @@ const KEY = process.env.SUPABASE_LAB_SERVICE_KEY;
 if (!URL_ || !KEY) { console.error("missing supabase env"); process.exit(1); }
 
 const dir = f => new URL(`../data/${f}`, import.meta.url).pathname;
-const CATALOGS = [
+const CATALOGS = process.env.LOAD_CATALOGS?.split(",") ?? [
   "catalog-met.jsonl", "catalog-met-wd.jsonl", "catalog-cle.jsonl",
   "catalog-aic.jsonl", "catalog-nga.jsonl",
 ];
+const EMB_RE = new RegExp(`^${process.env.LOAD_EMB_PREFIX ?? "embeddings-"}.*\\.jsonl$`);
 
 const meta = new Map();
 for (const f of CATALOGS) {
@@ -36,7 +37,7 @@ console.log(`${meta.size} catalog rows`);
 
 const emb = new Map();
 for (const f of fs.readdirSync(dir("."))) {
-  if (!/^embeddings-.*\.jsonl$/.test(f)) continue;
+  if (!EMB_RE.test(f)) continue;
   const rl = readline.createInterface({ input: fs.createReadStream(dir(f)), crlfDelay: Infinity });
   for await (const l of rl) if (l.trim()) {
     try {
@@ -53,7 +54,7 @@ const degenerate = (w, h) =>
 
 // first catalog wins on id collision (met API rows carry real metmuseum.org
 // URLs, so they lead; wd/cle/aic/nga already dedupe against each other by id)
-const ORDER = ["catalog-met.jsonl", "catalog-met-wd.jsonl", "catalog-cle.jsonl", "catalog-aic.jsonl", "catalog-nga.jsonl"];
+const ORDER = process.env.LOAD_ORDER?.split(",") ?? CATALOGS;
 const rows = [];
 const seen = new Set();
 for (const f of ORDER) {

@@ -17,7 +17,7 @@ const KEY = process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY;
 const BASE = process.env.AI_GATEWAY_API_KEY
   ? "https://ai-gateway.vercel.sh/v1"
   : "https://api.openai.com/v1";
-const MODEL = process.env.AI_GATEWAY_API_KEY ? "openai/gpt-4o" : "gpt-4o";
+const MODEL = process.env.JUDGE_MODEL ?? (process.env.AI_GATEWAY_API_KEY ? "openai/gpt-4o" : "gpt-4o");
 
 const old = JSON.parse(fs.readFileSync(path.join(BLIND, "old-results.json"), "utf8"));
 const fresh = JSON.parse(fs.readFileSync(path.join(BLIND, "new-results.json"), "utf8"));
