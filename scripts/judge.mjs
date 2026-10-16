@@ -41,11 +41,13 @@ let wins = 0, losses = 0, ties = 0;
 for (let i = 0; i < old.length; i++) {
   const o = old[i], n = fresh.find(x => x.file?.startsWith(String(i))) ?? fresh[i];
   const photoUrl = o.photo.url.split("?")[0];
-  const [p64, a64, b64] = await Promise.all([b64(photoUrl), b64(o.results[0].img), b64(n.results[0].img)]);
-  if (!p64 || !a64 || !b64) { console.log(`${i}: fetch failed, skip`); verdicts.push({ i, q: o.photo.q, skip: true }); continue; }
+  const oldImg = o.results[0].img ?? o.results[0].thumb_url ?? o.results[0].image_url;
+  const newImg = n.results[0].img ?? n.results[0].thumb_url ?? n.results[0].image_url;
+  const [pB, aB, bB] = await Promise.all([b64(photoUrl), b64(oldImg), b64(newImg)]);
+  if (!pB || !aB || !bB) { console.log(`${i}: fetch failed, skip`); verdicts.push({ i, q: o.photo.q, skip: true }); continue; }
   const swap = Math.random() < 0.5; // shuffle old/new into the A/B image slots
-  const first = swap ? { b64: b64, url: n.results[0].img } : { b64: a64, url: o.results[0].img };
-  const second = swap ? { b64: a64, url: o.results[0].img } : { b64: b64, url: n.results[0].img };
+  const first = swap ? { data: bB, url: newImg } : { data: aB, url: oldImg };
+  const second = swap ? { data: aB, url: oldImg } : { data: bB, url: newImg };
 
   const prompt = `Image 1 is a photograph. Images 2 and 3 are artworks. Which artwork more closely RESEMBLES the photograph — overall subject, composition, pose, palette and mood? Judge visual resemblance only, not quality. Answer with exactly one line: "A" (image 2), "B" (image 3), or "TIE", then a short reason after a dash.`;
   const body = {
@@ -54,9 +56,9 @@ for (let i = 0; i < old.length; i++) {
       role: "user",
       content: [
         { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: `data:${mime(photoUrl)};base64,${p64}` } },
-        { type: "image_url", image_url: { url: `data:${mime(first.url)};base64,${first.b64}` } },
-        { type: "image_url", image_url: { url: `data:${mime(second.url)};base64,${second.b64}` } },
+        { type: "image_url", image_url: { url: `data:${mime(photoUrl)};base64,${pB}` } },
+        { type: "image_url", image_url: { url: `data:${mime(first.url)};base64,${first.data}` } },
+        { type: "image_url", image_url: { url: `data:${mime(second.url)};base64,${second.data}` } },
       ],
     }],
     max_tokens: 120,
@@ -74,7 +76,7 @@ for (let i = 0; i < old.length; i++) {
       const txt = (await r.json()).choices?.[0]?.message?.content ?? "";
       const m = txt.match(/^\s*(A|B|TIE)\b/i);
       pick = m ? m[1].toUpperCase() : null;
-      why = txt.replace(/^[^\n]*-?\s*/, "").slice(0, 160);
+      why = txt.replace(/^\s*(?:A|B|TIE)\b\s*[-—:]?\s*/i, "").replace(/\s+/g, " ").slice(0, 160);
       break;
     } catch { await new Promise(s => setTimeout(s, 4000)); }
   }
