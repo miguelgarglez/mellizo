@@ -13,7 +13,7 @@ const warm = async () => {
   const ctx = await chromium.launchPersistentContext(PROFILE, { viewport: { width: 1440, height: 900 } });
   const p = await ctx.newPage();
   await p.goto(URL_, { waitUntil: "networkidle" });
-  await p.getByRole("button", { name: /hang one of ours/i }).click();
+  await p.getByRole("button", { name: /hang the sample/i }).click();
   await p.waitForSelector(".phase-result", { timeout: 180000 });
   console.log("warmed");
   await ctx.close();
@@ -31,7 +31,7 @@ const shoot = async () => {
   await p.goto(URL_, { waitUntil: "networkidle" });
   await p.waitForTimeout(2600);
   mark("entry");
-  await p.getByRole("button", { name: /hang one of ours/i }).click();
+  await p.getByRole("button", { name: /hang the sample/i }).click();
   mark("clicked sample");
   await p.waitForSelector(".phase-result", { timeout: 120000 });
   mark("result phase");
@@ -52,9 +52,10 @@ const shoot = async () => {
   await p.waitForTimeout(3000);
   mark("done");
   await ctx.close();
-  const f = fs.readdirSync(`${OUT}/footage`).find(x => x.endsWith(".webm"));
+  const f = fs.readdirSync(`${OUT}/footage`).filter(x => x.endsWith(".webm"))
+    .sort((a, b) => fs.statSync(`${OUT}/footage/${b}`).size - fs.statSync(`${OUT}/footage/${a}`).size)[0];
   fs.renameSync(`${OUT}/footage/${f}`, `${OUT}/footage.webm`);
-  fs.rmdirSync(`${OUT}/footage`);
+  fs.rmSync(`${OUT}/footage`, { recursive: true, force: true });
   console.log(`saved ${OUT}/footage.webm`);
 };
 
