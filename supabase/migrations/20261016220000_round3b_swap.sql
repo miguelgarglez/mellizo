@@ -11,6 +11,9 @@ alter table mellizo.artworks_next rename to artworks;
 -- every staged row was curated pictorial at embed time; the column keeps
 -- corpus_size/matching cheap and matches the live table's shape
 alter table mellizo.artworks add column if not exists pictorial boolean not null default true;
+-- corpus_size must stay index-only: a seq scan over the table exceeds the
+-- PostgREST statement timeout and the count 500s while matching stays fine
+create index if not exists artworks_pictorial_idx on mellizo.artworks (pictorial) where pictorial;
 
 create or replace function mellizo.match_artworks(
   query_embedding vector(512),
